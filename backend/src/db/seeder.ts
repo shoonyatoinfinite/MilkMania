@@ -11,16 +11,10 @@ export async function seedDatabase() {
 
     console.log('Seeding initial database...');
 
-    // 1. Seed exactly one master admin user from environment variables
-    const adminEmail = process.env.INITIAL_ADMIN_EMAIL;
-    const adminPassword = process.env.INITIAL_ADMIN_PASSWORD;
-    const adminMasterPassword = process.env.INITIAL_ADMIN_MASTER_PASSWORD;
-
-    if (!adminEmail || !adminPassword || !adminMasterPassword) {
-      throw new Error(
-        'Database seeding failed: Missing INITIAL_ADMIN_EMAIL, INITIAL_ADMIN_PASSWORD, or INITIAL_ADMIN_MASTER_PASSWORD in environment variables.'
-      );
-    }
+    // 1. Seed exactly one master admin user with default fallback credentials
+    const adminEmail = process.env.INITIAL_ADMIN_EMAIL || 'admin@milkmania.com';
+    const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'admin123';
+    const adminMasterPassword = process.env.INITIAL_ADMIN_MASTER_PASSWORD || 'master123';
 
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(adminPassword, salt);
