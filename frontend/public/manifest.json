@@ -1,0 +1,18 @@
+{
+  "short_name": "Milk Mania",
+  "name": "Milk Mania - Smart Dairy Manager",
+  "description": "AI-Powered Dairy Business Management System",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#FDFBF7",
+  "theme_color": "#38BDF8",
+  "display": "standalone",
+  "orientation": "portrait"
+}

@@ -1,0 +1,225 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theme Configurations */
+:root, [data-theme="morning"] {
+  --bg-farm: #FDFBF7;
+  --bg-card: rgba(255, 255, 255, 0.45);
+  --bg-input: rgba(255, 255, 255, 0.4);
+  --bg-popover: #FAF7F2;
+  --color-text: #1E293B;
+  --color-primary: #38BDF8;
+  --color-accent: #22C55E;
+  --color-gold: #EAB308;
+  --color-coral: #F87171;
+  --border-glass: rgba(255, 255, 255, 0.6);
+  --shadow-glass: rgba(142, 133, 115, 0.08);
+}
+
+[data-theme="evening"] {
+  --bg-farm: #F0F9FF;
+  --bg-card: rgba(255, 255, 255, 0.55);
+  --bg-input: rgba(255, 255, 255, 0.5);
+  --bg-popover: #F0F9FF;
+  --color-text: #0F172A;
+  --color-primary: #0EA5E9;
+  --color-accent: #10B981;
+  --color-gold: #F59E0B;
+  --color-coral: #EF4444;
+  --border-glass: rgba(255, 255, 255, 0.7);
+  --shadow-glass: rgba(14, 165, 233, 0.06);
+}
+
+[data-theme="midnight"] {
+  --bg-farm: #090B0F; /* Midnight dark buffalo black */
+  --bg-card: rgba(20, 24, 33, 0.65); /* Translucent dark slate */
+  --bg-input: rgba(0, 0, 0, 0.3); /* Dark input */
+  --bg-popover: #111317; /* Dark cream modal */
+  --color-text: #FAF8F5; /* Cream fresh milk white */
+  --color-primary: #FFFFFF; /* Milk white */
+  --color-accent: #10B981; /* Grassy pasture green */
+  --color-gold: #F59E0B; /* Golden butter */
+  --color-coral: #EF4444; /* Pinkish warning */
+  --border-glass: rgba(255, 255, 255, 0.09); /* Soft dark glass */
+  --shadow-glass: rgba(0, 0, 0, 0.35); /* Heavy dark shadow */
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-farm);
+  color: var(--color-text);
+  overflow-x: hidden;
+  transition: background-color 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Glassmorphism Classes */
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-glass);
+  box-shadow: 0 8px 32px 0 var(--shadow-glass);
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card:hover {
+  box-shadow: 0 12px 40px 0 var(--shadow-glass);
+  transform: translateY(-2px);
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.glass-input {
+  background: var(--bg-input);
+  border: 1.5px solid var(--border-glass);
+  color: var(--color-text);
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.glass-input:focus {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.15);
+}
+
+/* Midnight Mode overrides for white elements */
+[data-theme="midnight"] .bg-white {
+  background-color: #111317 !important;
+}
+
+[data-theme="midnight"] .bg-white\/50,
+[data-theme="midnight"] .bg-white\/40,
+[data-theme="midnight"] .bg-white\/60,
+[data-theme="midnight"] .bg-white\/20,
+[data-theme="midnight"] .bg-white\/30 {
+  background-color: rgba(20, 24, 33, 0.6) !important;
+}
+
+[data-theme="midnight"] .border-white\/80,
+[data-theme="midnight"] .border-white\/60,
+[data-theme="midnight"] .border-white\/45,
+[data-theme="midnight"] .border-white\/50,
+[data-theme="midnight"] .border-white\/30,
+[data-theme="midnight"] .border-white {
+  border-color: rgba(255, 255, 255, 0.09) !important;
+}
+
+[data-theme="midnight"] select option {
+  background-color: #111317 !important;
+  color: #FAF8F5 !important;
+}
+
+[data-theme="midnight"] .bg-milk-50 {
+  background-color: #111317 !important;
+}
+
+[data-theme="midnight"] .text-dairy-text\/75,
+[data-theme="midnight"] .text-dairy-text\/60,
+[data-theme="midnight"] .text-dairy-text\/50 {
+  color: rgba(250, 248, 245, 0.7) !important;
+}
+
+[data-theme="midnight"] [class*="text-slate-"],
+[data-theme="midnight"] [class*="text-gray-"],
+[data-theme="midnight"] [class*="text-zinc-"],
+[data-theme="midnight"] [class*="text-neutral-"] {
+  color: var(--color-text) !important;
+}
+
+[data-theme="midnight"] .bg-milk-100,
+[data-theme="midnight"] .bg-milk-200 {
+  background-color: #1a1c23 !important;
+}
+
+[data-theme="midnight"] .bg-dairy-sky.text-white,
+[data-theme="midnight"] .bg-dairy-sky .text-white {
+  color: #090B0F !important;
+}
+
+[data-theme="midnight"] .recharts-default-tooltip {
+  background-color: #111317 !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-theme="midnight"] .recharts-default-tooltip .recharts-tooltip-item {
+  color: #FAF8F5 !important;
+}
+
+[data-theme="midnight"] .recharts-default-tooltip .recharts-tooltip-label {
+  color: rgba(250, 248, 245, 0.6) !important;
+  font-weight: bold !important;
+}
+
+/* Custom Hide Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Custom Milk Liquid Motion CSS Animation */
+@keyframes waveMotion {
+  0% {
+    transform: translateX(0) translateZ(0) scaleY(1);
+  }
+  50% {
+    transform: translateX(-25%) translateZ(0) scaleY(0.85);
+  }
+  100% {
+    transform: translateX(-50%) translateZ(0) scaleY(1);
+  }
+}
+
+.liquid-wave {
+  animation: waveMotion 12s linear infinite;
+  transform-origin: center bottom;
+}
+
+.liquid-wave-fast {
+  animation: waveMotion 6s linear infinite;
+  transform-origin: center bottom;
+}
+
+/* Custom cursor styling (for desktop) */
+.custom-cursor {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-primary);
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  position: fixed;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 9999;
+  transition: width 0.2s, height 0.2s, background-color 0.2s;
+  mix-blend-mode: difference;
+}
+
+.custom-cursor-active {
+  width: 30px;
+  height: 30px;
+  background-color: var(--border-glass);
+  border-color: var(--border-glass);
+}

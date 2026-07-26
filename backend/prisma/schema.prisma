@@ -1,0 +1,133 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                 String   @id @default(uuid())
+  username           String   @unique
+  name               String
+  passwordHash       String
+  masterPasswordHash String
+  lastPasswordHash   String?
+  role               String   @default("ADMIN") // Father/Son both have admin permissions
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Animal {
+  id               String           @id @default(uuid())
+  name             String
+  breed            String
+  age              Int              // Age in years
+  purchaseDate     DateTime
+  status           String           @default("ACTIVE") // ACTIVE, DRY, SICK, SOLD
+  photoUrl         String?
+  healthNotes      String?
+  vaccinationNotes String?
+  dailyCapacity    Float            @default(0.0)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  productions      MilkProduction[]
+}
+
+model MilkProduction {
+  id              String   @id @default(uuid())
+  animalId        String
+  animal          Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  date            DateTime
+  shift           String   // MORNING, EVENING
+  quantity        Float
+  homeConsumption Float    @default(0.0)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Customer {
+  id             String      @id @default(uuid())
+  name           String
+  phone          String?
+  village        String
+  address        String?
+  pricePerLiter  Float
+  customerType   String      @default("INDIVIDUAL") // INDIVIDUAL, BULK
+  status         String      @default("ACTIVE") // ACTIVE, INACTIVE
+  notes          String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  sales          MilkSales[]
+  payments       Payment[]
+}
+
+model MilkSales {
+  id            String   @id @default(uuid())
+  customerId    String
+  customer      Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  date          DateTime
+  shift         String   // MORNING, EVENING
+  quantity      Float
+  rate          Float
+  amount        Float
+  paymentMethod String   @default("PENDING") // CASH, UPI, PENDING
+  remarks       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  customerId    String
+  customer      Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  date          DateTime
+  amount        Float
+  paymentMethod String   // CASH, UPI
+  remarks       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  date        DateTime
+  category    String   // FEED, MEDICINE, TRANSPORT, ELECTRICITY, WATER, REPAIRS, EQUIPMENT, VETERINARY, MISCELLANEOUS
+  amount      Float
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Inventory {
+  id             String   @id @default(uuid())
+  itemName       String
+  quantity       Float
+  unit           String   // BAGS, BOTTLES, PIECES, LITER, KG
+  minStockAlert  Float    @default(1.0)
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Setting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SessionAdjustment {
+  id          String   @id @default(uuid())
+  date        DateTime
+  shift       String   // MORNING, EVENING
+  actionType  String   // EMPTY, ROLLOVER_FROM, ROLLOVER_TO
+  quantity    Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
