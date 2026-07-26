@@ -68,7 +68,7 @@ async function startServer() {
   try {
     // Run the seeder on start
     await seedDatabase();
-    
+
     app.listen(PORT, () => {
       console.log(`================================================`);
       console.log(`🥛 Milk Mania Server running on port ${PORT}`);
@@ -83,3 +83,4 @@ async function startServer() {
 }
 
 startServer();
+
