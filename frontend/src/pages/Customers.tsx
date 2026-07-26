@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 import { useTranslation } from '../utils/translations';
 import { Plus, Edit3, Trash2, BookOpen, Phone, MapPin, X } from 'lucide-react';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
 
 export const Customers: React.FC = () => {
   const { customers, createCustomer, updateCustomer, deleteCustomer, createPayment, language, settings, refreshAllData } = useApp();
