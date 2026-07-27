@@ -148,6 +148,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     initAuth();
   }, [token]);
 
+  // Global print listener to force light theme for receipt/PDF printing
+  useEffect(() => {
+    let originalTheme: string | null = null;
+
+    const handleBeforePrint = () => {
+      originalTheme = document.documentElement.getAttribute('data-theme');
+      document.documentElement.setAttribute('data-theme', 'morning');
+    };
+
+    const handleAfterPrint = () => {
+      if (originalTheme) {
+        document.documentElement.setAttribute('data-theme', originalTheme);
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    };
+
+    window.addEventListener('beforeprint', handleBeforePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
+
+    return () => {
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, []);
+
   const toggleTheme = () => {
     const nextTheme = theme === 'morning' ? 'evening' : theme === 'evening' ? 'midnight' : 'morning';
     setTheme(nextTheme);
