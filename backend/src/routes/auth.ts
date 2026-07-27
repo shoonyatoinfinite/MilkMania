@@ -254,6 +254,55 @@ router.post('/forgot-password', async (req: any, res: Response) => {
   }
 });
 
+// PUT /api/auth/users/:id
+router.put('/users/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Not authenticated.' });
+  }
+  if (req.user.role !== 'ADMIN') {
+    return res.status(403).json({ message: 'Only Master Admin can modify users.' });
+  }
+
+  const { id } = req.params;
+  const { username, name, password, role } = req.body;
+
+  try {
+    const userToEdit = await db.users.findUnique({ where: { id } });
+    if (!userToEdit) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    // If username is changing, ensure it's not taken
+    if (username && username !== userToEdit.username) {
+      const existing = await db.users.findUnique({ where: { username } });
+      if (existing) {
+        return res.status(400).json({ message: 'Username is already in use.' });
+      }
+    }
+
+    const updateData: any = {};
+    if (username) updateData.username = username;
+    if (name) updateData.name = name;
+    if (role) updateData.role = role;
+
+    if (password && password.trim() !== '') {
+      const salt = await bcrypt.genSalt(10);
+      updateData.passwordHash = await bcrypt.hash(password, salt);
+    }
+
+    await db.users.update({
+      where: { id },
+      data: updateData
+    });
+
+    broadcast({ type: 'REFRESH_DATA' });
+    return res.json({ message: 'User updated successfully.' });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    return res.status(500).json({ message: 'Internal server error updating user.' });
+  }
+});
+
 // DELETE /api/auth/users/:id
 router.delete('/users/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) {

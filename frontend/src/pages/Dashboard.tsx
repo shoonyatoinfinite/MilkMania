@@ -38,6 +38,14 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
+const getLocalDateStr = (dateVal: string | Date = new Date()) => {
+  const d = new Date(dateVal);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export const Dashboard: React.FC = () => {
   const { 
     user, 
@@ -98,12 +106,12 @@ export const Dashboard: React.FC = () => {
   const [filterRange, setFilterRange] = useState<'TODAY' | 'THIS_MONTH' | 'THIS_YEAR' | 'ALL_TIME' | 'CUSTOM'>('TODAY');
   const [dashStart, setDashStart] = useState('');
   const [dashEnd, setDashEnd] = useState('');
-  const [dashboardSingleDate, setDashboardSingleDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [dashboardSingleDate, setDashboardSingleDate] = useState(() => getLocalDateStr());
 
   // Session adjustments states
   const [adjModalOpen, setAdjModalOpen] = useState(false);
   const [adjForm, setAdjForm] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: getLocalDateStr(),
     shift: 'MORNING',
     actionType: 'EMPTY',
     quantity: ''
@@ -115,11 +123,11 @@ export const Dashboard: React.FC = () => {
     const shift = adjForm.shift;
 
     const prodSum = (productions || [])
-      .filter((p: any) => new Date(p.date).toISOString().split('T')[0] === dateStr && p.shift === shift)
+      .filter((p: any) => getLocalDateStr(p.date) === dateStr && p.shift === shift)
       .reduce((sum: number, p: any) => sum + (p.quantity - (p.homeConsumption || 0)), 0);
 
     const salesSum = (sales || [])
-      .filter((s: any) => new Date(s.date).toISOString().split('T')[0] === dateStr && s.shift === shift)
+      .filter((s: any) => getLocalDateStr(s.date) === dateStr && s.shift === shift)
       .reduce((sum: number, s: any) => sum + s.quantity, 0);
 
     const baseRem = prodSum - salesSum;
@@ -127,12 +135,12 @@ export const Dashboard: React.FC = () => {
   }, [adjForm.date, adjForm.shift, productions, sales]);
 
   const remainingMilkForDirectSale = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalDateStr();
     const shift = directSale.shift;
 
     const prodSum = (productions || [])
       .filter((p: any) => {
-        const pDate = new Date(p.date).toISOString().split('T')[0];
+        const pDate = getLocalDateStr(p.date);
         const matchDate = pDate === todayStr;
         const matchShift = shift ? p.shift === shift : true;
         return matchDate && matchShift;
@@ -141,7 +149,7 @@ export const Dashboard: React.FC = () => {
 
     const salesSum = (sales || [])
       .filter((s: any) => {
-        const sDate = new Date(s.date).toISOString().split('T')[0];
+        const sDate = getLocalDateStr(s.date);
         const matchDate = sDate === todayStr;
         const matchShift = shift ? s.shift === shift : true;
         return matchDate && matchShift;
@@ -150,7 +158,7 @@ export const Dashboard: React.FC = () => {
 
     const adjsSum = (dashboardStats?.sessionAdjustments || [])
       .filter((a: any) => {
-        const aDate = new Date(a.date).toISOString().split('T')[0];
+        const aDate = getLocalDateStr(a.date);
         const matchDate = aDate === todayStr;
         const matchShift = shift ? a.shift === shift : true;
         return matchDate && matchShift;
@@ -176,7 +184,7 @@ export const Dashboard: React.FC = () => {
     if (!adjForm.date || !adjForm.shift) return false;
     const adjs = dashboardStats?.sessionAdjustments || [];
     return adjs.some((a: any) => {
-      const aDate = new Date(a.date).toISOString().split('T')[0];
+      const aDate = getLocalDateStr(a.date);
       return aDate === adjForm.date && 
              a.shift === adjForm.shift && 
              (a.actionType === 'EMPTY' || a.actionType === 'ROLLOVER_FROM');
@@ -190,6 +198,16 @@ export const Dashboard: React.FC = () => {
   const handleCreateAdjustment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adjForm.date || !adjForm.shift || !adjForm.quantity) return;
+
+    if (getLocalDateStr(adjForm.date) > getLocalDateStr()) {
+      alert(language === 'hi' ? 'भविष्य की तारीखों के लिए समायोजन सहेज नहीं सकते।' : 'Cannot add or modify records for future dates.');
+      return;
+    }
+
+    if (adjForm.shift === 'EVENING' && getLocalDateStr(adjForm.date) === getLocalDateStr() && new Date().getHours() < 12) {
+      alert(language === 'hi' ? 'दोपहर 12 बजे से पहले शाम के सत्र का डेटा दर्ज नहीं किया जा सकता।' : 'Evening session data cannot be recorded before 12:00 PM today.');
+      return;
+    }
 
     const success = await createAdjustment({
       date: adjForm.date,
@@ -218,7 +236,7 @@ export const Dashboard: React.FC = () => {
     let computedEnd = '';
 
     if (range === 'TODAY') {
-      const todayStr = today.toISOString().split('T')[0];
+      const todayStr = getLocalDateStr(today);
       computedStart = todayStr;
       computedEnd = todayStr;
     } else if (range === 'THIS_MONTH') {
@@ -234,7 +252,7 @@ export const Dashboard: React.FC = () => {
       computedEnd = `${year}-12-31`;
     } else if (range === 'ALL_TIME') {
       computedStart = '2020-01-01';
-      computedEnd = today.toISOString().split('T')[0];
+      computedEnd = getLocalDateStr(today);
     } else if (range === 'CUSTOM') {
       computedStart = start || '';
       computedEnd = end || '';
@@ -247,6 +265,10 @@ export const Dashboard: React.FC = () => {
 
   const handleRangeChange = (val: typeof filterRange) => {
     setFilterRange(val);
+    if (val === 'TODAY') {
+      const todayStr = getLocalDateStr();
+      setDashboardSingleDate(todayStr);
+    }
     if (val !== 'CUSTOM') {
       triggerRefresh(val);
     }
@@ -275,6 +297,17 @@ export const Dashboard: React.FC = () => {
       alert('Please fill in customer, quantity, and rate.');
       return;
     }
+
+    if (getLocalDateStr(dashboardSingleDate) > getLocalDateStr()) {
+      alert(language === 'hi' ? 'भविष्य की तारीखों के लिए बिक्री सहेज नहीं सकते।' : 'Cannot add or modify records for future dates.');
+      return;
+    }
+
+    if (directSale.shift === 'EVENING' && getLocalDateStr(dashboardSingleDate) === getLocalDateStr() && new Date().getHours() < 12) {
+      alert(language === 'hi' ? 'दोपहर 12 बजे से पहले शाम के सत्र का डेटा दर्ज नहीं किया जा सकता।' : 'Evening session data cannot be recorded before 12:00 PM today.');
+      return;
+    }
+
     setSavingSale(true);
     const amount = Number(directSale.quantity) * Number(directSale.rate);
     const success = await createSale({
@@ -303,6 +336,16 @@ export const Dashboard: React.FC = () => {
 
   const handleCreateProd = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (getLocalDateStr(dashboardSingleDate) > getLocalDateStr()) {
+      alert(language === 'hi' ? 'भविष्य की तारीखों के लिए उत्पादन सहेज नहीं सकते।' : 'Cannot add or modify records for future dates.');
+      return;
+    }
+
+    if (prodForm.shift === 'EVENING' && getLocalDateStr(dashboardSingleDate) === getLocalDateStr() && new Date().getHours() < 12) {
+      alert(language === 'hi' ? 'दोपहर 12 बजे से पहले शाम के सत्र का डेटा दर्ज नहीं किया जा सकता।' : 'Evening session data cannot be recorded before 12:00 PM today.');
+      return;
+    }
+
     const success = await createProduction({
       ...prodForm,
       quantity: Number(prodForm.quantity),
@@ -317,6 +360,10 @@ export const Dashboard: React.FC = () => {
 
   const handleCreateExp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (getLocalDateStr(dashboardSingleDate) > getLocalDateStr()) {
+      alert(language === 'hi' ? 'भविष्य की तारीखों के लिए खर्चे सहेज नहीं सकते।' : 'Cannot add or modify records for future dates.');
+      return;
+    }
     const success = await createExpense({
       ...expForm,
       amount: Number(expForm.amount),
@@ -330,6 +377,10 @@ export const Dashboard: React.FC = () => {
 
   const handleCreatePay = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (getLocalDateStr(dashboardSingleDate) > getLocalDateStr()) {
+      alert(language === 'hi' ? 'भविष्य की तारीखों के लिए भुगतान सहेज नहीं सकते।' : 'Cannot add or modify records for future dates.');
+      return;
+    }
     const success = await createPayment({
       ...payForm,
       amount: Number(payForm.amount),
@@ -543,14 +594,16 @@ export const Dashboard: React.FC = () => {
                   </button>
                   <button
                     type="button"
+                    disabled={getLocalDateStr(dashboardSingleDate) === getLocalDateStr() && new Date().getHours() < 12}
                     onClick={() => setDirectSale(prev => ({ ...prev, shift: 'EVENING' }))}
                     className={`py-3 rounded-2xl text-xs font-bold transition-all border ${
                       directSale.shift === 'EVENING'
                         ? 'bg-dairy-sky text-white border-dairy-sky shadow-sm'
                         : 'bg-white/40 text-dairy-text border-white/70 hover:bg-white'
-                    }`}
+                    } disabled:opacity-40 disabled:cursor-not-allowed`}
+                    title={getLocalDateStr(dashboardSingleDate) === getLocalDateStr() && new Date().getHours() < 12 ? 'Blocked till 12pm' : ''}
                   >
-                    🌙 {t('evening')}
+                    🌙 {t('evening')} {getLocalDateStr(dashboardSingleDate) === getLocalDateStr() && new Date().getHours() < 12 ? '(Blocked till 12pm)' : ''}
                   </button>
                 </div>
               </div>
@@ -905,7 +958,9 @@ export const Dashboard: React.FC = () => {
                   >
                     <option value="" disabled hidden>-- Select Shift --</option>
                     <option value="MORNING">☀️ {t('morning')}</option>
-                    <option value="EVENING">🌙 {t('evening')}</option>
+                    <option value="EVENING" disabled={getLocalDateStr(dashboardSingleDate) === getLocalDateStr() && new Date().getHours() < 12}>
+                      🌙 {t('evening')} {getLocalDateStr(dashboardSingleDate) === getLocalDateStr() && new Date().getHours() < 12 ? '(Blocked till 12pm)' : ''}
+                    </option>
                   </select>
                 </div>
 
@@ -1116,7 +1171,9 @@ export const Dashboard: React.FC = () => {
                     required
                   >
                     <option value="MORNING">☀️ {t('morning')}</option>
-                    <option value="EVENING">🌙 {t('evening')}</option>
+                    <option value="EVENING" disabled={getLocalDateStr(adjForm.date) === getLocalDateStr() && new Date().getHours() < 12}>
+                      🌙 {t('evening')} {getLocalDateStr(adjForm.date) === getLocalDateStr() && new Date().getHours() < 12 ? '(Blocked till 12pm)' : ''}
+                    </option>
                   </select>
                 </div>
               </div>

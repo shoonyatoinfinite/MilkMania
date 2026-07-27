@@ -7,13 +7,21 @@ const router = Router();
 router.use(authenticateJWT);
 
 // GET /api/dashboard
+const getLocalDateStr = (dVal: string | Date = new Date()) => {
+  const d = new Date(dVal);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 router.get('/', async (req: any, res: Response) => {
   try {
     const { startDate, endDate } = req.query;
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    const activeStart = startDate ? new Date(startDate as string) : new Date(todayStr + 'T00:00:00.000Z');
-    const activeEnd = endDate ? new Date(endDate as string + 'T23:59:59.999Z') : new Date(todayStr + 'T23:59:59.999Z');
+    const todayStr = getLocalDateStr();
+    const activeStart = startDate ? new Date(startDate as string) : new Date(todayStr + 'T00:00:00.000');
+    const activeEnd = endDate ? new Date(endDate as string + 'T23:59:59.999') : new Date(todayStr + 'T23:59:59.999');
 
     const startMs = activeStart.getTime();
     const endMs = activeEnd.getTime();
@@ -132,7 +140,7 @@ router.get('/', async (req: any, res: Response) => {
     let chartEnd = new Date(activeEnd);
     let chartDiffDays = diffDays;
 
-    if (activeStart.toISOString().split('T')[0] === activeEnd.toISOString().split('T')[0]) {
+    if (getLocalDateStr(activeStart) === getLocalDateStr(activeEnd)) {
       chartStart = new Date(activeStart);
       chartStart.setDate(chartStart.getDate() - 6);
       chartStart.setHours(0, 0, 0, 0);
@@ -143,22 +151,22 @@ router.get('/', async (req: any, res: Response) => {
     if (chartDiffDays <= 35) {
       // Group by Day
       for (let d = new Date(chartStart); d <= chartEnd; d.setDate(d.getDate() + 1)) {
-        const dStr = d.toISOString().split('T')[0];
+        const dStr = getLocalDateStr(d);
         
         const dayYield = productions
-          .filter((p: any) => new Date(p.date).toISOString().split('T')[0] === dStr)
+          .filter((p: any) => getLocalDateStr(p.date) === dStr)
           .reduce((sum: number, p: any) => sum + (p.quantity - (p.homeConsumption || 0)), 0);
 
         const dayTotalYield = productions
-          .filter((p: any) => new Date(p.date).toISOString().split('T')[0] === dStr)
+          .filter((p: any) => getLocalDateStr(p.date) === dStr)
           .reduce((sum: number, p: any) => sum + p.quantity, 0);
 
         const daySales = sales
-          .filter((s: any) => new Date(s.date).toISOString().split('T')[0] === dStr)
+          .filter((s: any) => getLocalDateStr(s.date) === dStr)
           .reduce((sum: number, s: any) => sum + s.quantity, 0);
 
         const dayRevenue = sales
-          .filter((s: any) => new Date(s.date).toISOString().split('T')[0] === dStr)
+          .filter((s: any) => getLocalDateStr(s.date) === dStr)
           .reduce((sum: number, s: any) => sum + s.amount, 0);
 
         const label = d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });

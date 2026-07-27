@@ -35,6 +35,48 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Global Date Validation Middleware
+app.use((req: any, res: any, next: any) => {
+  if ((req.method === 'POST' || req.method === 'PUT') && req.body) {
+    const getLocalDateStr = (dVal: string | Date = new Date()) => {
+      const d = new Date(dVal);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const isFutureDate = (dateVal: string | Date) => {
+      if (!dateVal) return false;
+      return getLocalDateStr(dateVal) > getLocalDateStr(new Date());
+    };
+
+    const isEveningBlockedToday = (dateVal: string | Date, shift: string) => {
+      if (!dateVal || !shift) return false;
+      const targetStr = getLocalDateStr(dateVal);
+      const todayStr = getLocalDateStr(new Date());
+      if (targetStr === todayStr && shift.toUpperCase() === 'EVENING') {
+        const currentHour = new Date().getHours();
+        if (currentHour < 12) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    // Check 'date' property in request body if provided
+    if (req.body.date && isFutureDate(req.body.date)) {
+      return res.status(400).json({ message: 'Cannot add or modify records for future dates.' });
+    }
+
+    // Check 'shift' property in request body if provided
+    if (req.body.date && req.body.shift && isEveningBlockedToday(req.body.date, req.body.shift)) {
+      return res.status(400).json({ message: 'Evening session data cannot be recorded before 12:00 PM today.' });
+    }
+  }
+  next();
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({

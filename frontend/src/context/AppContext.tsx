@@ -30,6 +30,7 @@ interface AppContextType {
   portalUsers: any[];
   createPortalUser: (data: any) => Promise<boolean>;
   deletePortalUser: (id: string) => Promise<boolean>;
+  updatePortalUser: (id: string, data: any) => Promise<boolean>;
   forgotPassword: (username: string, lastPassword: string, masterPassword: string, newPassword: string) => Promise<boolean>;
   isInstallable: boolean;
   deferredPrompt: any;
@@ -191,6 +192,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const checkStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
     setIsStandalone(!!checkStandalone);
 
+    const handleAppInstalled = () => {
+      setIsStandalone(true);
+      setIsInstallable(false);
+    };
+
+    window.addEventListener('appinstalled', handleAppInstalled);
+
     // If early script captured the prompt, grab it
     if ((window as any).deferredPrompt) {
       setDeferredPrompt((window as any).deferredPrompt);
@@ -208,6 +216,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
@@ -275,6 +284,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (err: any) {
       console.error('Error deleting portal user:', err);
       setErrorMsg(err.response?.data?.message || 'Error deleting user access.');
+      return false;
+    }
+  };
+
+  const updatePortalUser = async (id: string, data: any): Promise<boolean> => {
+    try {
+      setErrorMsg(null);
+      await axios.put(`${API_BASE}/auth/users/${id}`, data);
+      await fetchPortalUsers();
+      return true;
+    } catch (err: any) {
+      console.error('Error updating portal user:', err);
+      setErrorMsg(err.response?.data?.message || 'Error updating user credentials.');
       return false;
     }
   };
@@ -715,6 +737,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         portalUsers,
         createPortalUser,
         deletePortalUser,
+        updatePortalUser,
         forgotPassword,
         isInstallable,
         deferredPrompt,

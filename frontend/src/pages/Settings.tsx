@@ -14,13 +14,19 @@ export const Settings: React.FC = () => {
     portalUsers,
     createPortalUser,
     deletePortalUser,
+    updatePortalUser,
     isInstallable,
     isStandalone,
     handleInstallPrompt,
     user
   } = useApp();
 
+  const [editingUser, setEditingUser] = useState<any | null>(null);
+
   const { t } = useTranslation(language);
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+  const showPWASection = !isStandalone && (isInstallable || isIOS);
 
   const [rate, setRate] = useState('65');
   const [bulkRate, setBulkRate] = useState('58');
@@ -61,25 +67,39 @@ export const Settings: React.FC = () => {
     setUserError(null);
     setUserSuccess(false);
 
-    if (newUserForm.password.length < 6) {
+    if (!editingUser && newUserForm.password.length < 6) {
+      setUserError('Password must be at least 6 characters.');
+      return;
+    }
+    if (editingUser && newUserForm.password && newUserForm.password.length < 6) {
       setUserError('Password must be at least 6 characters.');
       return;
     }
 
     setAddingUser(true);
-    const ok = await createPortalUser({
-      username: newUserForm.username,
-      name: newUserForm.name,
-      password: newUserForm.password
-    });
+    let ok = false;
+    if (editingUser) {
+      ok = await updatePortalUser(editingUser.id, {
+        username: newUserForm.username,
+        name: newUserForm.name,
+        password: newUserForm.password
+      });
+    } else {
+      ok = await createPortalUser({
+        username: newUserForm.username,
+        name: newUserForm.name,
+        password: newUserForm.password
+      });
+    }
     setAddingUser(false);
 
     if (ok) {
       setUserSuccess(true);
       setNewUserForm({ username: '', name: '', password: '' });
+      setEditingUser(null);
       setTimeout(() => setUserSuccess(false), 3000);
     } else {
-      setUserError('Username already taken or error creating user.');
+      setUserError(editingUser ? 'Username already taken or error updating user.' : 'Username already taken or error creating user.');
     }
   };
 
@@ -230,18 +250,31 @@ export const Settings: React.FC = () => {
                     {u.role}
                   </span>
                   {user?.role === 'ADMIN' && u.id !== user?.id && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (window.confirm(`Are you sure you want to delete user access for ${u.name}?`)) {
-                          await deletePortalUser(u.id);
-                        }
-                      }}
-                      className="p-1.5 text-dairy-coral hover:bg-dairy-coral/10 hover:text-dairy-coral rounded-xl transition-all"
-                      title="Delete access"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingUser(u);
+                          setNewUserForm({ username: u.username, name: u.name, password: '' });
+                        }}
+                        className="p-1.5 text-dairy-sky hover:bg-dairy-sky/10 hover:text-dairy-sky rounded-xl transition-all"
+                        title="Edit credentials"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-edit-2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (window.confirm(`Are you sure you want to delete user access for ${u.name}?`)) {
+                            await deletePortalUser(u.id);
+                          }
+                        }}
+                        className="p-1.5 text-dairy-coral hover:bg-dairy-coral/10 hover:text-dairy-coral rounded-xl transition-all"
+                        title="Delete access"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -250,7 +283,9 @@ export const Settings: React.FC = () => {
 
           {/* Form to Add User */}
           <form onSubmit={handleAddUser} className="flex flex-col gap-4 border-t border-white/20 pt-5">
-            <h4 className="text-xs font-bold text-dairy-text/75 uppercase tracking-wider">{t('addUser')}</h4>
+            <h4 className="text-xs font-bold text-dairy-text/75 uppercase tracking-wider">
+              {editingUser ? 'Edit User Credentials (क्रेडेंशियल्स बदलें)' : t('addUser')}
+            </h4>
             
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-bold text-dairy-text/60">{t('fullName')}</label>
@@ -278,59 +313,69 @@ export const Settings: React.FC = () => {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-dairy-text/60">{t('password')}</label>
+                <label className="text-xs font-bold text-dairy-text/60">
+                  {t('password')} {editingUser && '(Optional)'}
+                </label>
                 <input
                   type="password"
-                  placeholder="••••••••"
+                  placeholder={editingUser ? 'Leave blank to keep unchanged' : '••••••••'}
                   value={newUserForm.password}
                   onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
                   className="w-full px-4 py-3 rounded-2xl text-xs font-semibold glass-input text-dairy-text"
-                  required
+                  required={!editingUser}
                 />
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={addingUser}
-              className="w-full py-3.5 bg-dairy-green text-white font-bold rounded-2xl text-xs shadow-md active:scale-95 transition-all mt-2 flex items-center justify-center"
-            >
-              <span>{t('saveUser')}</span>
-            </button>
+            <div className="flex gap-3 mt-2">
+              {editingUser && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingUser(null);
+                    setNewUserForm({ username: '', name: '', password: '' });
+                  }}
+                  className="flex-1 py-3.5 bg-gray-400 hover:bg-gray-500 text-white font-bold rounded-2xl text-xs shadow-md active:scale-95 transition-all flex items-center justify-center"
+                >
+                  Cancel (रद्द करें)
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={addingUser}
+                className="flex-1 py-3.5 bg-dairy-green text-white font-bold rounded-2xl text-xs shadow-md active:scale-95 transition-all flex items-center justify-center"
+              >
+                <span>{editingUser ? 'Update Credentials (अपडेट करें)' : t('saveUser')}</span>
+              </button>
+            </div>
           </form>
         </div>
 
         {/* PWA App Installation Section */}
-        <div className="glass-card rounded-4xl p-6 md:col-span-2">
-          <h3 className="font-space font-bold text-lg text-dairy-text mb-2">📱 PWA Application Access</h3>
-          <p className="text-xs text-dairy-text/60 mb-5">
-            Install Milk Mania directly on your home screen for quick offline access and real-time alerts.
-          </p>
-          
-          <button
-            type="button"
-            disabled={isStandalone}
-            onClick={async () => {
-              if (isStandalone) return;
-              if (isInstallable && handleInstallPrompt) {
-                await handleInstallPrompt();
-              } else {
-                alert("To install on your mobile device:\n\n• Apple iOS (iPhone/iPad): Tap the Share button (⎙) in Safari and select 'Add to Home Screen'.\n• Google Android / Chrome: Tap the three dots (menu) and select 'Install app' or 'Add to Home screen'.");
-              }
-            }}
-            className={`w-full py-4 text-white font-extrabold rounded-2xl text-xs shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 ${
-              isStandalone 
-                ? 'bg-dairy-green/50 cursor-not-allowed' 
-                : 'bg-dairy-sky hover:bg-dairy-sky/90'
-            }`}
-          >
-            <span>
-              {isStandalone 
-                ? '✓ App is already installed (ऐप पहले से इंस्टॉल है)' 
-                : '📥 Install Milk Mania App (ऐप इंस्टॉल करें)'}
-            </span>
-          </button>
-        </div>
+        {showPWASection && (
+          <div className="glass-card rounded-4xl p-6 md:col-span-2">
+            <h3 className="font-space font-bold text-lg text-dairy-text mb-2">📱 PWA Application Access</h3>
+            <p className="text-xs text-dairy-text/60 mb-5">
+              Install Milk Mania directly on your home screen for quick offline access and real-time alerts.
+            </p>
+            
+            <button
+              type="button"
+              onClick={async () => {
+                if (isInstallable && handleInstallPrompt) {
+                  await handleInstallPrompt();
+                } else {
+                  alert("To install on your mobile device:\n\n• Apple iOS (iPhone/iPad): Tap the Share button (⎙) in Safari and select 'Add to Home Screen'.\n• Google Android / Chrome: Tap the three dots (menu) and select 'Install app' or 'Add to Home screen'.");
+                }
+              }}
+              className="w-full py-4 text-white font-extrabold rounded-2xl text-xs shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 bg-dairy-sky hover:bg-dairy-sky/90"
+            >
+              <span>
+                📥 Install Milk Mania App (ऐप इंस्टॉल करें)
+              </span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
