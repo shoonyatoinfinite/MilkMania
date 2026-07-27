@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { db } from '../db/db';
 import { authenticateJWT } from '../middleware/auth';
+import { broadcast } from '../utils/websocket';
 
 const router = Router();
 
@@ -56,6 +57,7 @@ router.post('/', async (req: any, res: Response) => {
       }
     });
 
+    broadcast({ type: 'REFRESH_DATA' });
     return res.status(201).json(payment);
   } catch (error) {
     console.error('Error recording payment:', error);
@@ -85,6 +87,7 @@ router.put('/:id', async (req: any, res: Response) => {
       return res.status(404).json({ message: 'Payment log not found.' });
     }
 
+    broadcast({ type: 'REFRESH_DATA' });
     return res.json(updated);
   } catch (error) {
     console.error('Error updating payment:', error);
@@ -100,6 +103,7 @@ router.delete('/:id', async (req: any, res: Response) => {
     if (!deleted) {
       return res.status(404).json({ message: 'Payment log not found.' });
     }
+    broadcast({ type: 'REFRESH_DATA' });
     return res.json({ message: 'Payment record deleted successfully.', payment: deleted });
   } catch (error) {
     console.error('Error deleting payment:', error);

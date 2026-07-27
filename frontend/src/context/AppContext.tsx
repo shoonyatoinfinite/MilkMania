@@ -29,7 +29,12 @@ interface AppContextType {
   updateProfile: (name: string, password?: string) => Promise<boolean>;
   portalUsers: any[];
   createPortalUser: (data: any) => Promise<boolean>;
+  deletePortalUser: (id: string) => Promise<boolean>;
   forgotPassword: (username: string, lastPassword: string, masterPassword: string, newPassword: string) => Promise<boolean>;
+  isInstallable: boolean;
+  deferredPrompt: any;
+  isStandalone: boolean;
+  handleInstallPrompt: () => Promise<void>;
   
   // Data State
   animals: any[];
@@ -97,6 +102,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [settings, setSettings] = useState<any>({});
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [portalUsers, setPortalUsers] = useState<any[]>([]);
+  const [isInstallable, setIsInstallable] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
 
   // Set up Authorization header defaults
   useEffect(() => {
@@ -177,6 +185,98 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setInventory([]);
     setDashboardStats(null);
     setPortalUsers([]);
+  };
+
+  useEffect(() => {
+    const checkStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+    setIsStandalone(!!checkStandalone);
+
+    // If early script captured the prompt, grab it
+    if ((window as any).deferredPrompt) {
+      setDeferredPrompt((window as any).deferredPrompt);
+      setIsInstallable(true);
+    }
+
+    const handleBeforeInstall = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+      (window as any).deferredPrompt = e;
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    };
+  }, []);
+
+  const handleInstallPrompt = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User installation decision: ${outcome}`);
+    setDeferredPrompt(null);
+    setIsInstallable(false);
+  };
+
+  useEffect(() => {
+    if (!token) return;
+
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: any = null;
+
+    const connect = () => {
+      const wsUrl = API_BASE.replace('/api', '').replace(/^http/, 'ws');
+      ws = new WebSocket(wsUrl);
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'REFRESH_DATA') {
+            console.log('Real-time data update received from server. Refreshing...');
+            refreshAllData();
+          }
+        } catch (err) {
+          console.error('Error handling WebSocket message:', err);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket connection closed. Reconnecting in 3 seconds...');
+        reconnectTimeout = setTimeout(connect, 3000);
+      };
+
+      ws.onerror = (err) => {
+        console.error('WebSocket connection error:', err);
+        ws?.close();
+      };
+    };
+
+    connect();
+
+    return () => {
+      if (ws) {
+        ws.onclose = null;
+        ws.close();
+      }
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+    };
+  }, [token]);
+
+  const deletePortalUser = async (id: string): Promise<boolean> => {
+    try {
+      setErrorMsg(null);
+      await axios.delete(`${API_BASE}/auth/users/${id}`);
+      await fetchPortalUsers();
+      return true;
+    } catch (err: any) {
+      console.error('Error deleting portal user:', err);
+      setErrorMsg(err.response?.data?.message || 'Error deleting user access.');
+      return false;
+    }
   };
 
   const fetchPortalUsers = async () => {
@@ -614,7 +714,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createAdjustment,
         portalUsers,
         createPortalUser,
+        deletePortalUser,
         forgotPassword,
+        isInstallable,
+        deferredPrompt,
+        isStandalone,
+        handleInstallPrompt,
         loading,
         errorMsg,
         setErrorMsg

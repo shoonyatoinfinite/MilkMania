@@ -171,7 +171,9 @@ export const Payments: React.FC = () => {
                 >
                   <option value="" disabled hidden>-- Select Customer --</option>
                   {customers.map(c => (
-                    <option key={c.id} value={c.id}>{c.name} (Due: ₹{c.pendingBalance})</option>
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.pendingBalance < 0 ? `${t('advance')}: ₹${Math.abs(c.pendingBalance)}` : `Due: ₹${c.pendingBalance}`})
+                    </option>
                   ))}
                 </select>
               </div>

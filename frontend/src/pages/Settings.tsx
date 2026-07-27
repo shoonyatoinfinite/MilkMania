@@ -12,7 +12,12 @@ export const Settings: React.FC = () => {
     language, 
     setLanguage,
     portalUsers,
-    createPortalUser
+    createPortalUser,
+    deletePortalUser,
+    isInstallable,
+    isStandalone,
+    handleInstallPrompt,
+    user
   } = useApp();
 
   const { t } = useTranslation(language);
@@ -220,9 +225,25 @@ export const Settings: React.FC = () => {
                   <p className="font-bold text-dairy-text">{u.name}</p>
                   <p className="text-[10px] text-dairy-text/60">{u.username}</p>
                 </div>
-                <span className="px-2.5 py-1 bg-dairy-sky/10 text-dairy-sky rounded-lg font-bold uppercase tracking-wider text-[8px]">
-                  {u.role}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 bg-dairy-sky/10 text-dairy-sky rounded-lg font-bold uppercase tracking-wider text-[8px]">
+                    {u.role}
+                  </span>
+                  {user?.role === 'ADMIN' && u.id !== user?.id && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (window.confirm(`Are you sure you want to delete user access for ${u.name}?`)) {
+                          await deletePortalUser(u.id);
+                        }
+                      }}
+                      className="p-1.5 text-dairy-coral hover:bg-dairy-coral/10 hover:text-dairy-coral rounded-xl transition-all"
+                      title="Delete access"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -277,6 +298,38 @@ export const Settings: React.FC = () => {
               <span>{t('saveUser')}</span>
             </button>
           </form>
+        </div>
+
+        {/* PWA App Installation Section */}
+        <div className="glass-card rounded-4xl p-6 md:col-span-2">
+          <h3 className="font-space font-bold text-lg text-dairy-text mb-2">📱 PWA Application Access</h3>
+          <p className="text-xs text-dairy-text/60 mb-5">
+            Install Milk Mania directly on your home screen for quick offline access and real-time alerts.
+          </p>
+          
+          <button
+            type="button"
+            disabled={isStandalone}
+            onClick={async () => {
+              if (isStandalone) return;
+              if (isInstallable && handleInstallPrompt) {
+                await handleInstallPrompt();
+              } else {
+                alert("To install on your mobile device:\n\n• Apple iOS (iPhone/iPad): Tap the Share button (⎙) in Safari and select 'Add to Home Screen'.\n• Google Android / Chrome: Tap the three dots (menu) and select 'Install app' or 'Add to Home screen'.");
+              }
+            }}
+            className={`w-full py-4 text-white font-extrabold rounded-2xl text-xs shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 ${
+              isStandalone 
+                ? 'bg-dairy-green/50 cursor-not-allowed' 
+                : 'bg-dairy-sky hover:bg-dairy-sky/90'
+            }`}
+          >
+            <span>
+              {isStandalone 
+                ? '✓ App is already installed (ऐप पहले से इंस्टॉल है)' 
+                : '📥 Install Milk Mania App (ऐप इंस्टॉल करें)'}
+            </span>
+          </button>
         </div>
       </div>
     </div>

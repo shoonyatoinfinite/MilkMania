@@ -8,6 +8,12 @@
     <meta name="theme-color" content="#38BDF8" />
     <link rel="manifest" href="/manifest.json" />
     <title>Milk Mania 🥛 | Modern Dairy Management</title>
+    <script>
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        window.deferredPrompt = e;
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

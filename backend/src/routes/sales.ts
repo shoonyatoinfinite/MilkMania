@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { db } from '../db/db';
 import { authenticateJWT } from '../middleware/auth';
+import { broadcast } from '../utils/websocket';
 
 const router = Router();
 
@@ -121,6 +122,7 @@ router.post('/', async (req: any, res: Response) => {
       }
     });
 
+    broadcast({ type: 'REFRESH_DATA' });
     return res.status(201).json(sale);
   } catch (error) {
     console.error('Error recording sale:', error);
@@ -225,6 +227,7 @@ router.put('/:id', async (req: any, res: Response) => {
       data: updateData
     });
 
+    broadcast({ type: 'REFRESH_DATA' });
     return res.json(updated);
   } catch (error) {
     console.error('Error updating sale:', error);
@@ -240,6 +243,7 @@ router.delete('/:id', async (req: any, res: Response) => {
     if (!deleted) {
       return res.status(404).json({ message: 'Sale record not found.' });
     }
+    broadcast({ type: 'REFRESH_DATA' });
     return res.json({ message: 'Sale record deleted successfully.', sale: deleted });
   } catch (error) {
     console.error('Error deleting sale:', error);

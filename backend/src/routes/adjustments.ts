@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { db } from '../db/db';
 import { authenticateJWT } from '../middleware/auth';
+import { broadcast } from '../utils/websocket';
 
 const router = Router();
 router.use(authenticateJWT);
@@ -87,6 +88,7 @@ router.post('/', async (req: any, res: Response) => {
           quantity: parsedQty
         }
       });
+      broadcast({ type: 'REFRESH_DATA' });
       return res.json(adj);
     } else if (actionType === 'ROLLOVER') {
       // 1. Create ROLLOVER_FROM for current session
@@ -112,6 +114,7 @@ router.post('/', async (req: any, res: Response) => {
         }
       });
 
+      broadcast({ type: 'REFRESH_DATA' });
       return res.json(fromAdj);
     } else {
       return res.status(400).json({ message: 'Invalid action type.' });

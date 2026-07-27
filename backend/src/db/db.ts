@@ -145,6 +145,10 @@ export const db = {
     update: async (args: { where: { id: string }; data: { username?: string; name?: string; passwordHash?: string; masterPasswordHash?: string; lastPasswordHash?: string | null } }) => {
       if (USE_MOCK_DB) return jsonUsers.update(args.where, args.data);
       return prisma!.user.update({ where: args.where, data: args.data });
+    },
+    delete: async (args: { where: { id: string } }) => {
+      if (USE_MOCK_DB) return jsonUsers.delete(args.where);
+      return prisma!.user.delete({ where: args.where });
     }
   },
 

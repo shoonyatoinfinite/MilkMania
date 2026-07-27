@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { db } from '../db/db';
 import { authenticateJWT } from '../middleware/auth';
+import { broadcast } from '../utils/websocket';
 
 const router = Router();
 
@@ -42,6 +43,7 @@ router.post('/', async (req: any, res: Response) => {
         updatedSettings.push(c);
       }
     }
+    broadcast({ type: 'REFRESH_DATA' });
     return res.json({ message: 'Settings updated successfully!', settings: updatedSettings });
   } catch (error) {
     console.error('Error updating settings:', error);
@@ -177,6 +179,7 @@ router.post('/restore', async (req: any, res: Response) => {
       }
     }
 
+    broadcast({ type: 'REFRESH_DATA' });
     return res.json({ message: 'Database restored successfully!' });
   } catch (error) {
     console.error('Restore error:', error);

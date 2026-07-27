@@ -126,6 +126,52 @@ export const Dashboard: React.FC = () => {
     return Math.max(0, Math.round(baseRem * 10) / 10);
   }, [adjForm.date, adjForm.shift, productions, sales]);
 
+  const remainingMilkForDirectSale = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const shift = directSale.shift;
+
+    const prodSum = (productions || [])
+      .filter((p: any) => {
+        const pDate = new Date(p.date).toISOString().split('T')[0];
+        const matchDate = pDate === todayStr;
+        const matchShift = shift ? p.shift === shift : true;
+        return matchDate && matchShift;
+      })
+      .reduce((sum: number, p: any) => sum + (p.quantity - (p.homeConsumption || 0)), 0);
+
+    const salesSum = (sales || [])
+      .filter((s: any) => {
+        const sDate = new Date(s.date).toISOString().split('T')[0];
+        const matchDate = sDate === todayStr;
+        const matchShift = shift ? s.shift === shift : true;
+        return matchDate && matchShift;
+      })
+      .reduce((sum: number, s: any) => sum + s.quantity, 0);
+
+    const adjsSum = (dashboardStats?.sessionAdjustments || [])
+      .filter((a: any) => {
+        const aDate = new Date(a.date).toISOString().split('T')[0];
+        const matchDate = aDate === todayStr;
+        const matchShift = shift ? a.shift === shift : true;
+        return matchDate && matchShift;
+      })
+      .reduce((sum: number, a: any) => {
+        if (a.actionType === 'EMPTY') {
+          return sum + a.quantity;
+        }
+        if (a.actionType === 'ROLLOVER_TO') {
+          return sum - a.quantity;
+        }
+        if (a.actionType === 'ROLLOVER_FROM') {
+          return sum + a.quantity;
+        }
+        return sum;
+      }, 0);
+
+    const baseRem = prodSum - salesSum - adjsSum;
+    return Math.max(0, Math.round(baseRem * 10) / 10);
+  }, [directSale.shift, productions, sales, dashboardStats?.sessionAdjustments]);
+
   const isSessionAlreadyAdjusted = useMemo(() => {
     if (!adjForm.date || !adjForm.shift) return false;
     const adjs = dashboardStats?.sessionAdjustments || [];
@@ -529,7 +575,12 @@ export const Dashboard: React.FC = () => {
 
               {/* Quantity */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-dairy-text/60">{t('quantity')}</label>
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-bold text-dairy-text/60">{t('quantity')}</label>
+                  <span className="text-[10px] font-extrabold text-dairy-sky bg-dairy-sky/10 px-2 py-0.5 rounded-full">
+                    {language === 'hi' ? 'शेष दूध:' : 'Remaining:'} {remainingMilkForDirectSale} L
+                  </span>
+                </div>
                 <input
                   type="number"
                   step="0.1"
@@ -707,6 +758,9 @@ export const Dashboard: React.FC = () => {
                     <filter id="shadowSales" x="-10%" y="-10%" width="120%" height="130%">
                       <feDropShadow dx="0" dy="6" stdDeviation="3" floodColor="#10B981" floodOpacity="0.25" />
                     </filter>
+                    <filter id="shadowTotalYield" x="-10%" y="-10%" width="120%" height="130%">
+                      <feDropShadow dx="0" dy="6" stdDeviation="3" floodColor="#EF4444" floodOpacity="0.25" />
+                    </filter>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={document.documentElement.getAttribute('data-theme') === 'midnight' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'} />
                   <XAxis 
@@ -733,17 +787,28 @@ export const Dashboard: React.FC = () => {
                   <Line 
                     type="monotone" 
                     dataKey="yield" 
-                    name="Milk Yield"
+                    name={language === 'hi' ? 'बिक्री योग्य दूध' : 'Net Yield'}
                     stroke="#0EA5E9" 
                     strokeWidth={4} 
+                    strokeDasharray="5 5"
                     dot={{ r: 4, strokeWidth: 2, stroke: '#0EA5E9', fill: '#fff' }} 
                     activeDot={{ r: 7, strokeWidth: 0 }} 
                     filter="url(#shadowYield)"
                   />
                   <Line 
                     type="monotone" 
+                    dataKey="totalYield" 
+                    name={language === 'hi' ? 'कुल उत्पादन' : 'Total Yield'}
+                    stroke="#EF4444" 
+                    strokeWidth={4} 
+                    dot={{ r: 4, strokeWidth: 2, stroke: '#EF4444', fill: '#fff' }} 
+                    activeDot={{ r: 7, strokeWidth: 0 }} 
+                    filter="url(#shadowTotalYield)"
+                  />
+                  <Line 
+                    type="monotone" 
                     dataKey="sales" 
-                    name="Milk Sales"
+                    name={language === 'hi' ? 'कुल बिक्री' : 'Milk Sales'}
                     stroke="#10B981" 
                     strokeWidth={4} 
                     dot={{ r: 4, strokeWidth: 2, stroke: '#10B981', fill: '#fff' }} 
@@ -955,7 +1020,9 @@ export const Dashboard: React.FC = () => {
                   >
                     <option value="" disabled hidden>-- Select Customer --</option>
                     {customers.map((c: any) => (
-                      <option key={c.id} value={c.id}>{c.name} (Pending: ₹{c.pendingBalance})</option>
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.pendingBalance < 0 ? `${t('advance')}: ₹${Math.abs(c.pendingBalance)}` : `${t('balanceDue')}: ₹${c.pendingBalance}`})
+                      </option>
                     ))}
                   </select>
                 </div>

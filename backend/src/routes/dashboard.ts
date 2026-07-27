@@ -68,7 +68,10 @@ router.get('/', async (req: any, res: Response) => {
       
       const salesAmt = custSales.reduce((sum: number, s: any) => sum + s.amount, 0);
       const paidAmt = custPayments.reduce((sum: number, p: any) => sum + p.amount, 0);
-      totalPendingPayments += (salesAmt - paidAmt);
+      const balance = salesAmt - paidAmt;
+      if (balance > 0) {
+        totalPendingPayments += balance;
+      }
     });
 
     // 5. Monthly Calculations (Current Calendar Month - used for context card fallback)
@@ -146,6 +149,10 @@ router.get('/', async (req: any, res: Response) => {
           .filter((p: any) => new Date(p.date).toISOString().split('T')[0] === dStr)
           .reduce((sum: number, p: any) => sum + (p.quantity - (p.homeConsumption || 0)), 0);
 
+        const dayTotalYield = productions
+          .filter((p: any) => new Date(p.date).toISOString().split('T')[0] === dStr)
+          .reduce((sum: number, p: any) => sum + p.quantity, 0);
+
         const daySales = sales
           .filter((s: any) => new Date(s.date).toISOString().split('T')[0] === dStr)
           .reduce((sum: number, s: any) => sum + s.quantity, 0);
@@ -160,6 +167,7 @@ router.get('/', async (req: any, res: Response) => {
           date: dStr,
           day: label,
           yield: Math.round(dayYield * 10) / 10,
+          totalYield: Math.round(dayTotalYield * 10) / 10,
           sales: Math.round(daySales * 10) / 10,
           revenue: Math.round(dayRevenue * 10) / 10
         });
@@ -183,6 +191,13 @@ router.get('/', async (req: any, res: Response) => {
             })
             .reduce((sum: number, p: any) => sum + (p.quantity - (p.homeConsumption || 0)), 0);
 
+          const monthTotalYield = productions
+            .filter((p: any) => {
+              const d = new Date(p.date);
+              return d.getFullYear() === y && d.getMonth() === m;
+            })
+            .reduce((sum: number, p: any) => sum + p.quantity, 0);
+
           const monthSales = sales
             .filter((s: any) => {
               const d = new Date(s.date);
@@ -203,6 +218,7 @@ router.get('/', async (req: any, res: Response) => {
             date: `${y}-${String(m+1).padStart(2,'0')}`,
             day: monthLabel,
             yield: Math.round(monthYield * 10) / 10,
+            totalYield: Math.round(monthTotalYield * 10) / 10,
             sales: Math.round(monthSales * 10) / 10,
             revenue: Math.round(monthRevenue * 10) / 10
           });

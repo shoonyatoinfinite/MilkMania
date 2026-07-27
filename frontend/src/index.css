@@ -223,3 +223,60 @@ body {
   background-color: var(--border-glass);
   border-color: var(--border-glass);
 }
+
+/* Media Print Rules for Premium Receipt Generation */
+@media print {
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background-color: #FFFFFF !important;
+    color: #1E293B !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+  .print-receipt-container {
+    background-color: #FAF9F6 !important;
+    color: #0F172A !important;
+    min-height: 100vh !important;
+    position: relative !important;
+    padding: 3rem !important;
+    box-sizing: border-box !important;
+  }
+  .print-receipt-header {
+    background: linear-gradient(135deg, #0284C7, #0EA5E9) !important;
+    color: white !important;
+    padding: 1.75rem !important;
+    border-radius: 1.5rem !important;
+    margin-bottom: 2rem !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05) !important;
+    position: relative !important;
+    overflow: hidden !important;
+  }
+  .print-receipt-table {
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    width: 100% !important;
+  }
+  .print-receipt-table th {
+    background-color: #E0F2FE !important;
+    color: #0369A1 !important;
+    font-weight: 700 !important;
+    padding: 0.75rem 1rem !important;
+    border-bottom: 2px solid #BAE6FD !important;
+  }
+  .print-receipt-table td {
+    padding: 0.75rem 1rem !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+  }
+  .print-receipt-table tr:nth-child(even) {
+    background-color: rgba(224, 242, 254, 0.25) !important;
+  }
+  .print-receipt-summary {
+    background-color: #F0F9FF !important;
+    border: 2px dashed #0EA5E9 !important;
+    border-radius: 1.5rem !important;
+    padding: 1.5rem !important;
+    margin-top: 2rem !important;
+  }
+}

@@ -205,6 +205,30 @@ export const Customers: React.FC = () => {
     };
   }, [ledgerCustomer, ledgerData, printStart, printEnd]);
 
+  const sessionTotals = useMemo(() => {
+    let morningLiters = 0;
+    let eveningLiters = 0;
+    let totalLiters = 0;
+    let totalAmount = 0;
+
+    (printStatement?.sales || []).forEach((s: any) => {
+      if (s.shift === 'MORNING') {
+        morningLiters += s.quantity;
+      } else if (s.shift === 'EVENING') {
+        eveningLiters += s.quantity;
+      }
+      totalLiters += s.quantity;
+      totalAmount += s.amount;
+    });
+
+    return {
+      morningLiters: Math.round(morningLiters * 10) / 10,
+      eveningLiters: Math.round(eveningLiters * 10) / 10,
+      totalLiters: Math.round(totalLiters * 10) / 10,
+      totalAmount: Math.round(totalAmount * 10) / 10
+    };
+  }, [printStatement?.sales]);
+
   return (
     <div className="flex-1 pb-24 lg:pb-10 lg:pl-72 p-6 max-w-7xl mx-auto text-left print:p-0 print:pl-0 print:max-w-none">
       
@@ -476,9 +500,11 @@ export const Customers: React.FC = () => {
                       <p className="font-space font-extrabold text-sm text-dairy-green mt-1">₹{ledgerData.summary.totalPaid}</p>
                     </div>
                     <div>
-                      <p className="text-[8px] font-bold text-dairy-text/50 uppercase leading-none">{t('balanceDue')}</p>
+                      <p className="text-[8px] font-bold text-dairy-text/50 uppercase leading-none">
+                        {ledgerData.summary.pendingBalance < 0 ? t('advance') : t('balanceDue')}
+                      </p>
                       <p className={`font-space font-extrabold text-sm mt-1 ${ledgerData.summary.pendingBalance > 0 ? 'text-dairy-coral' : 'text-dairy-green'}`}>
-                        ₹{ledgerData.summary.pendingBalance}
+                        ₹{Math.abs(ledgerData.summary.pendingBalance)}
                       </p>
                     </div>
                   </div>
@@ -601,83 +627,89 @@ export const Customers: React.FC = () => {
 
       {/* 4. PRINT-ONLY RECEIPT STATEMENT DIALOG (HIDDEN ON APP VIEW, SHOWN ONLY ON PRINT ACTION) */}
       {ledgerCustomer && (
-        <div className="hidden print:block absolute inset-0 bg-white text-black p-8 z-[99999] text-left text-sm font-sans leading-relaxed">
+        <div className="hidden print:block absolute inset-0 print-receipt-container text-slate-800 z-[99999] text-left text-sm font-sans leading-relaxed min-h-screen">
           
+          {/* Milk spill SVG curves */}
+          <svg className="absolute top-0 left-0 right-0 w-full h-24 text-sky-100 fill-current opacity-70 pointer-events-none" viewBox="0 0 1440 320" preserveAspectRatio="none">
+            <path d="M0,192C120,202.7,240,224,360,213.3C480,203,600,160,720,154.7C840,149,960,181,1080,186.7C1200,192,1320,171,1380,160L1420,154.7L1420,0L1380,0C1320,0,1200,0,1080,0C960,0,840,0,720,0C600,0,480,0,360,0C240,0,120,0,0,0Z"></path>
+          </svg>
+          
+          {/* Background milk spots */}
+          <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 10% 20%, #0EA5E9 25%, transparent 25%), radial-gradient(circle at 80% 70%, #0EA5E9 20%, transparent 20%), radial-gradient(circle at 50% 40%, #0EA5E9 15%, transparent 15%)' }} />
+
           {/* Bill Heading */}
-          <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
+          <div className="print-receipt-header flex justify-between items-center relative z-10">
             <div>
-              <h1 className="text-2xl font-bold uppercase tracking-tight">{settings.farm_name || 'Milk Mania Farm'}</h1>
-              <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Milk Bill Statement (दूध का बिल)</p>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-2xl">🥛</span>
+                <h1 className="text-2xl font-space font-extrabold uppercase tracking-tight">{settings.farm_name || 'Milk Mania Farm'}</h1>
+              </div>
+              <p className="text-xs opacity-90 font-bold uppercase tracking-wider">Milk Bill Statement • दूध का बिल</p>
             </div>
             <div className="text-right">
-              <h2 className="text-lg font-bold">{ledgerCustomer.name}</h2>
-              <p className="text-xs text-gray-500">Phone: {ledgerCustomer.phone || '-'}</p>
-              <p className="text-xs text-gray-500">Village: {ledgerCustomer.village}</p>
+              <h2 className="text-lg font-space font-extrabold">{ledgerCustomer.name}</h2>
+              <p className="text-xs opacity-80 font-semibold">Phone: {ledgerCustomer.phone || '-'}</p>
+              <p className="text-xs opacity-80 font-semibold">Village: {ledgerCustomer.village}</p>
             </div>
           </div>
 
           {/* Range */}
-          <div className="mb-6 bg-gray-50 border border-gray-200 p-3 rounded-lg flex justify-between items-center text-xs">
-            <p><strong>Billing Period (अवधि):</strong> {new Date(printStart).toLocaleDateString(language === 'en' ? 'en-US' : 'hi-IN')} to {new Date(printEnd).toLocaleDateString(language === 'en' ? 'en-US' : 'hi-IN')}</p>
-            <p><strong>Date Generated:</strong> {new Date().toLocaleDateString()}</p>
+          <div className="mb-6 bg-white/80 border border-sky-100 p-4 rounded-2xl flex justify-between items-center text-xs shadow-sm relative z-10">
+            <p className="font-semibold"><strong className="text-sky-700">Billing Period (अवधि):</strong> {new Date(printStart).toLocaleDateString(language === 'en' ? 'en-US' : 'hi-IN')} to {new Date(printEnd).toLocaleDateString(language === 'en' ? 'en-US' : 'hi-IN')}</p>
+            <p className="font-semibold"><strong className="text-sky-700">Date Generated:</strong> {new Date().toLocaleDateString()}</p>
           </div>
 
           {/* Sales Logs */}
-          <div className="mb-6">
-            <h3 className="text-sm font-bold border-b border-gray-400 pb-1 mb-2">1. Purchases Ledger (दूध की खरीद)</h3>
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-black text-left font-bold">
-                  <th className="py-2">Date</th>
-                  <th>Shift</th>
-                  <th>Quantity (Liters)</th>
-                  <th>Rate (₹/Liter)</th>
-                  <th className="text-right">Amount (₹)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {printStatement.sales.map((s: any) => (
-                  <tr key={s.id} className="border-b border-gray-200">
-                    <td className="py-2">{new Date(s.date).toLocaleDateString()}</td>
-                    <td>{s.shift === 'MORNING' ? t('morning') : t('evening')}</td>
-                    <td>{s.quantity} L</td>
-                    <td>₹{s.rate}</td>
-                    <td className="text-right font-semibold">₹{s.amount}</td>
-                  </tr>
-                ))}
-                {printStatement.sales.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="py-4 text-center text-gray-400 font-bold">No milk sales logged in this date range.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          <div className="mb-6 relative z-10">
+            <h3 className="text-sm font-space font-bold border-b-2 border-sky-100 pb-2 mb-3 text-sky-800">1. Milk Purchase Summary (दूध का विवरण)</h3>
+            <div className="grid grid-cols-4 gap-4 bg-white/70 border border-sky-100 p-5 rounded-2xl shadow-sm text-center">
+              <div className="bg-sky-50/50 p-4 rounded-xl border border-sky-100/50">
+                <p className="text-[10px] font-bold text-sky-700 uppercase tracking-wider mb-1">Morning Total (सुबह का कुल)</p>
+                <p className="font-space font-extrabold text-lg text-sky-950">{sessionTotals.morningLiters} L</p>
+              </div>
+              <div className="bg-sky-50/50 p-4 rounded-xl border border-sky-100/50">
+                <p className="text-[10px] font-bold text-sky-700 uppercase tracking-wider mb-1">Evening Total (शाम का कुल)</p>
+                <p className="font-space font-extrabold text-lg text-sky-950">{sessionTotals.eveningLiters} L</p>
+              </div>
+              <div className="bg-sky-600 p-4 rounded-xl text-white shadow-md flex flex-col justify-center">
+                <p className="text-[10px] font-bold opacity-90 uppercase tracking-wider mb-0.5">Grand Total Milk (कुल लीटर)</p>
+                <p className="font-space font-extrabold text-lg">{sessionTotals.totalLiters} L</p>
+              </div>
+              <div className="bg-emerald-600 p-4 rounded-xl text-white shadow-md flex flex-col justify-center">
+                <p className="text-[10px] font-bold opacity-90 uppercase tracking-wider mb-0.5">Total Bill (कुल मूल्य)</p>
+                <p className="font-space font-extrabold text-lg">₹{sessionTotals.totalAmount}</p>
+              </div>
+            </div>
           </div>
 
           {/* Payments Logs */}
-          <div className="mb-6">
-            <h3 className="text-sm font-bold border-b border-gray-400 pb-1 mb-2">2. Payments Deposited (जमा राशि)</h3>
-            <table className="w-full text-xs">
+          <div className="mb-6 relative z-10">
+            <h3 className="text-sm font-space font-bold border-b-2 border-sky-100 pb-2 mb-3 text-sky-800">2. Payments Deposited (जमा राशि)</h3>
+            <table className="w-full text-xs print-receipt-table rounded-2xl overflow-hidden shadow-sm">
               <thead>
-                <tr className="border-b border-black text-left font-bold">
-                  <th className="py-2">Date</th>
-                  <th>Payment Mode</th>
-                  <th>Remarks</th>
-                  <th className="text-right">Amount (₹)</th>
+                <tr className="text-left font-bold">
+                  <th className="py-2.5 px-4">Date</th>
+                  <th className="px-4">Payment Mode</th>
+                  <th className="px-4">Remarks</th>
+                  <th className="text-right px-4">Amount (₹)</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="bg-white/60">
                 {printStatement.payments.map((p: any) => (
-                  <tr key={p.id} className="border-b border-gray-200">
-                    <td className="py-2">{new Date(p.date).toLocaleDateString()}</td>
-                    <td>{p.paymentMethod === 'UPI' ? t('upi') : t('cash')}</td>
-                    <td>{p.remarks || '-'}</td>
-                    <td className="text-right font-semibold">₹{p.amount}</td>
+                  <tr key={p.id}>
+                    <td className="py-2.5 px-4 font-semibold">{new Date(p.date).toLocaleDateString()}</td>
+                    <td className="px-4">
+                      <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold text-[9px]">
+                        {p.paymentMethod === 'UPI' ? t('upi') : t('cash')}
+                      </span>
+                    </td>
+                    <td className="px-4 text-gray-600 font-semibold">{p.remarks || '-'}</td>
+                    <td className="text-right font-space font-bold text-emerald-600 px-4">₹{p.amount}</td>
                   </tr>
                 ))}
                 {printStatement.payments.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="py-4 text-center text-gray-400 font-bold">No payments deposited in this date range.</td>
+                    <td colSpan={4} className="py-6 text-center text-gray-400 font-bold">No payments deposited in this date range.</td>
                   </tr>
                 )}
               </tbody>
@@ -685,23 +717,34 @@ export const Customers: React.FC = () => {
           </div>
 
           {/* Totals Summary */}
-          <div className="mt-8 border-t-2 border-black pt-4 grid grid-cols-2 text-xs font-bold gap-4">
-            <div className="flex flex-col gap-1 leading-relaxed">
-              <p>Previous Balance (पिछला बकाया): <span className="font-semibold">₹{printStatement.previousBalance}</span></p>
-              <p>Total Liters Purchased (इस अवधि का दूध): <span className="font-semibold">{printStatement.liters} L</span></p>
-              <p>Total Milk Value (इस अवधि का मूल्य): <span className="font-semibold">₹{printStatement.due}</span></p>
-              <p>Total Deposited (इस अवधि का भुगतान): <span className="font-semibold text-green-700">₹{printStatement.paid}</span></p>
+          <div className="print-receipt-summary grid grid-cols-2 text-xs font-bold gap-4 relative z-10">
+            <div className="flex flex-col gap-1.5 leading-relaxed text-slate-700">
+              <p>Milk Rate (दूध की दर): <span className="font-space font-bold">₹{ledgerCustomer.pricePerLiter} / L</span></p>
+              <p>Previous Balance (पिछला बकाया): <span className="font-space font-bold">₹{printStatement.previousBalance}</span></p>
+              <p>Total Liters Purchased (इस अवधि का दूध): <span className="font-space font-bold text-sky-700">{printStatement.liters} L</span></p>
+              <p>Total Milk Value (इस अवधि का मूल्य): <span className="font-space font-bold">₹{printStatement.due}</span></p>
+              <p>Total Deposited (इस अवधि का भुगतान): <span className="font-space font-bold text-emerald-600">₹{printStatement.paid}</span></p>
             </div>
             
-            <div className="text-right flex flex-col justify-between">
-              <div className="text-lg font-extrabold text-red-600">
-                Net Balance Dues (कुल बकाया): ₹{printStatement.totalOutstanding}
-              </div>
-              <p className="text-[9px] text-gray-400 font-normal mt-4">
+            <div className="text-right flex flex-col justify-between items-end">
+              {printStatement.totalOutstanding < 0 ? (
+                <div className="text-sm font-space font-extrabold text-white bg-emerald-600 px-4 py-2.5 rounded-xl inline-block shadow-sm">
+                  Advance Balance (अग्रिम राशि): ₹{Math.abs(printStatement.totalOutstanding)}
+                </div>
+              ) : (
+                <div className="text-sm font-space font-extrabold text-white bg-sky-600 px-4 py-2.5 rounded-xl inline-block shadow-sm">
+                  Net Balance Dues (कुल बकाया): ₹{printStatement.totalOutstanding}
+                </div>
+              )}
+              <p className="text-[9px] text-slate-400 font-normal mt-4">
                 This is an autogenerated invoice generated by Milk Mania Portal.
               </p>
             </div>
           </div>
+          
+          <svg className="absolute bottom-0 left-0 right-0 w-full h-24 text-sky-50 fill-current opacity-60 pointer-events-none" viewBox="0 0 1440 320" preserveAspectRatio="none">
+            <path d="M0,96L80,117.3C160,139,320,181,480,197.3C640,213,800,203,960,181.3C1120,160,1280,128,1360,112L1440,96L1440,320L1360,320C1280,320,1120,320,960,320C800,320,640,320,480,320C320,320,160,320,80,320L0,320Z"></path>
+          </svg>
         </div>
       )}
     </div>

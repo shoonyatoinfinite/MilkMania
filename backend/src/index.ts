@@ -2,6 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import http from 'http';
+import { WebSocketServer } from 'ws';
+import { registerClient } from './utils/websocket';
 
 // Load Environment variables
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -63,13 +66,21 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   });
 });
 
+// Create HTTP and WebSocket Server
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server });
+
+wss.on('connection', (ws) => {
+  registerClient(ws);
+});
+
 // Auto seed and Start Server
 async function startServer() {
   try {
     // Run the seeder on start
     await seedDatabase();
 
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`================================================`);
       console.log(`🥛 Milk Mania Server running on port ${PORT}`);
       console.log(`📂 DB Mode: ${process.env.USE_MOCK_DB === 'true' ? 'Mock Local JSON' : 'PostgreSQL via Prisma'}`);

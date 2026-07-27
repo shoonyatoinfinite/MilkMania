@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { db } from '../db/db';
 import { authenticateJWT, AuthenticatedRequest } from '../middleware/auth';
+import { broadcast } from '../utils/websocket';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'milkmania_super_secret_liquid_fluid_key_2026';
@@ -111,6 +112,7 @@ router.put('/profile', authenticateJWT, async (req: AuthenticatedRequest, res: R
       return res.status(404).json({ message: 'User not found.' });
     }
 
+    broadcast({ type: 'REFRESH_DATA' });
     return res.json({
       message: 'Profile updated successfully!',
       user: {
@@ -180,6 +182,7 @@ router.post('/users', authenticateJWT, async (req: AuthenticatedRequest, res: Re
       }
     });
 
+    broadcast({ type: 'REFRESH_DATA' });
     return res.status(201).json({
       message: 'User created successfully!',
       user: {
@@ -243,10 +246,41 @@ router.post('/forgot-password', async (req: any, res: Response) => {
       }
     });
 
+    broadcast({ type: 'REFRESH_DATA' });
     return res.json({ message: 'Password reset successful!' });
   } catch (error) {
     console.error('Forgot password error:', error);
     return res.status(500).json({ message: 'Internal server error resetting password.' });
+  }
+});
+
+// DELETE /api/auth/users/:id
+router.delete('/users/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Not authenticated.' });
+  }
+  if (req.user.role !== 'ADMIN') {
+    return res.status(403).json({ message: 'Only Master Admin can delete users.' });
+  }
+
+  const { id } = req.params;
+  if (req.user.id === id) {
+    return res.status(400).json({ message: 'You cannot delete your own admin account.' });
+  }
+
+  try {
+    const user = await db.users.findUnique({ where: { id } });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    await db.users.delete({ where: { id } });
+    broadcast({ type: 'REFRESH_DATA' });
+    
+    return res.json({ message: 'User access deleted successfully.' });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    return res.status(500).json({ message: 'Error deleting user access.' });
   }
 });
 

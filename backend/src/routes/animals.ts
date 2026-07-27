@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { db } from '../db/db';
 import { authenticateJWT } from '../middleware/auth';
+import { broadcast } from '../utils/websocket';
 
 const router = Router();
 
@@ -54,6 +55,7 @@ router.post('/', async (req: any, res: Response) => {
       }
     });
 
+    broadcast({ type: 'REFRESH_DATA' });
     return res.status(201).json(newAnimal);
   } catch (error) {
     console.error('Error creating animal:', error);
@@ -86,6 +88,7 @@ router.put('/:id', async (req: any, res: Response) => {
       return res.status(404).json({ message: 'Animal not found.' });
     }
 
+    broadcast({ type: 'REFRESH_DATA' });
     return res.json(updated);
   } catch (error) {
     console.error('Error updating animal:', error);
@@ -101,6 +104,7 @@ router.delete('/:id', async (req: any, res: Response) => {
     if (!deleted) {
       return res.status(404).json({ message: 'Animal not found.' });
     }
+    broadcast({ type: 'REFRESH_DATA' });
     return res.json({ message: 'Animal entry deleted successfully.', animal: deleted });
   } catch (error) {
     console.error('Error deleting animal:', error);

@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { db } from '../db/db';
 import { authenticateJWT } from '../middleware/auth';
+import { broadcast } from '../utils/websocket';
 
 const router = Router();
 
@@ -97,6 +98,7 @@ router.post('/', async (req: any, res: Response) => {
       }
     });
 
+    broadcast({ type: 'REFRESH_DATA' });
     return res.status(201).json(log);
   } catch (error) {
     console.error('Error recording production yield:', error);
@@ -169,6 +171,7 @@ router.put('/:id', async (req: any, res: Response) => {
       data: updateData
     });
 
+    broadcast({ type: 'REFRESH_DATA' });
     return res.json(updated);
   } catch (error) {
     console.error('Error updating production yield:', error);
@@ -184,6 +187,7 @@ router.delete('/:id', async (req: any, res: Response) => {
     if (!deleted) {
       return res.status(404).json({ message: 'Production record not found.' });
     }
+    broadcast({ type: 'REFRESH_DATA' });
     return res.json({ message: 'Production record deleted successfully.', record: deleted });
   } catch (error) {
     console.error('Error deleting production record:', error);
