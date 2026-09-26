@@ -69,14 +69,7 @@ Customers access a **dedicated, mobile-first dashboard** at `/customer-login`:
 
 ---
 
-## 🔐 Default Credentials
 
-| Role | Username | Password / PIN |
-|---|---|---|
-| **Admin** | `admin@milkmania.com` | `admin123` |
-| **Customer** | *(mobile number)* | *(6-digit PIN set by admin)* |
-
-> ⚠️ **Change the admin password** after first login via the Profile page.
 
 ---
 
