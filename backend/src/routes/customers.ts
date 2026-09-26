@@ -162,17 +162,21 @@ router.get('/:id/ledger', async (req: any, res: Response) => {
 
 // POST /api/customers
 router.post('/', async (req: any, res: Response) => {
-  const { name, phone, village, address, pricePerLiter, customerType, status, notes } = req.body;
+  const { name, phone, pin, village, address, pricePerLiter, customerType, status, notes } = req.body;
 
   if (!name || !village || pricePerLiter === undefined) {
     return res.status(400).json({ message: 'Name, village, and price per liter are required.' });
   }
+
+  // 6 digit pin validation or default
+  const sanitizedPin = pin && /^\d{6}$/.test(pin.toString().trim()) ? pin.toString().trim() : '123456';
 
   try {
     const newCustomer = await db.customers.create({
       data: {
         name,
         phone: phone || '',
+        pin: sanitizedPin,
         village,
         address: address || '',
         pricePerLiter: parseFloat(pricePerLiter),
@@ -193,12 +197,18 @@ router.post('/', async (req: any, res: Response) => {
 // PUT /api/customers/:id
 router.put('/:id', async (req: any, res: Response) => {
   const { id } = req.params;
-  const { name, phone, village, address, pricePerLiter, customerType, status, notes } = req.body;
+  const { name, phone, pin, village, address, pricePerLiter, customerType, status, notes } = req.body;
 
   try {
     const updateData: any = {};
     if (name) updateData.name = name;
     if (phone !== undefined) updateData.phone = phone;
+    if (pin !== undefined) {
+      if (pin && !/^\d{6}$/.test(pin.toString().trim())) {
+        return res.status(400).json({ message: 'PIN must be exactly 6 digits.' });
+      }
+      if (pin) updateData.pin = pin.toString().trim();
+    }
     if (village) updateData.village = village;
     if (address !== undefined) updateData.address = address;
     if (pricePerLiter !== undefined) updateData.pricePerLiter = parseFloat(pricePerLiter);

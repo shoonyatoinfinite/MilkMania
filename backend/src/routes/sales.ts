@@ -52,23 +52,12 @@ router.post('/', async (req: any, res: Response) => {
       return res.status(404).json({ message: 'Customer not found.' });
     }
 
-    // 1. Calculate available stock for this shift and date
+    // Calculate available stock for this shift and date (from milk bought and adjustments)
     const targetDate = new Date(date);
     const startOfDay = new Date(targetDate);
     startOfDay.setUTCHours(0, 0, 0, 0);
     const endOfDay = new Date(targetDate);
     endOfDay.setUTCHours(23, 59, 59, 999);
-
-    const productions = await db.productions.findMany({
-      where: {
-        date: {
-          gte: startOfDay,
-          lte: endOfDay
-        }
-      }
-    });
-    const shiftProds = productions.filter((p: any) => p.shift === shift);
-    const totalRemainingYield = shiftProds.reduce((sum: number, p: any) => sum + (p.quantity - (p.homeConsumption || 0)), 0);
 
     const allSales = await db.sales.findMany({
       where: {
@@ -98,9 +87,22 @@ router.post('/', async (req: any, res: Response) => {
       .filter((a: any) => a.actionType === 'ROLLOVER_FROM' || a.actionType === 'EMPTY')
       .reduce((sum: number, a: any) => sum + a.quantity, 0);
 
-    const available = (totalRemainingYield + rolloverTo - reductions) - totalSold;
+    // Get milk bought for this date and shift
+    const milkBoughtList = await db.milkBought.findMany({
+      where: {
+        date: {
+          gte: startOfDay,
+          lte: endOfDay
+        }
+      }
+    });
+    const shiftMilkBought = milkBoughtList.filter((b: any) => b.shift === shift);
+    const totalBought = shiftMilkBought.reduce((sum: number, b: any) => sum + b.quantity, 0);
 
-    if (finalQty > available) {
+    const available = (totalBought + rolloverTo - reductions) - totalSold;
+
+    const strictSetting = await db.settings.findUnique({ where: { key: 'enforce_strict_stock' } });
+    if (strictSetting?.value === 'true' && totalBought > 0 && finalQty > available) {
       return res.status(400).json({
         message: `Insufficient milk stock for ${shift === 'MORNING' ? 'Morning' : 'Evening'} shift. Available: ${Math.round(available * 10) / 10} L, requested: ${finalQty} L.`
       });
@@ -198,9 +200,22 @@ router.put('/:id', async (req: any, res: Response) => {
       .filter((a: any) => a.actionType === 'ROLLOVER_FROM' || a.actionType === 'EMPTY')
       .reduce((sum: number, a: any) => sum + a.quantity, 0);
 
-    const available = (totalRemainingYield + rolloverTo - reductions) - totalSold;
+    // Get milk bought for nextShift
+    const milkBoughtList = await db.milkBought.findMany({
+      where: {
+        date: {
+          gte: startOfDay,
+          lte: endOfDay
+        }
+      }
+    });
+    const shiftMilkBought = milkBoughtList.filter((b: any) => b.shift === nextShift);
+    const totalBought = shiftMilkBought.reduce((sum: number, b: any) => sum + b.quantity, 0);
 
-    if (nextQty > available) {
+    const available = (totalRemainingYield + totalBought + rolloverTo - reductions) - totalSold;
+
+    const strictSetting = await db.settings.findUnique({ where: { key: 'enforce_strict_stock' } });
+    if (strictSetting?.value === 'true' && (totalRemainingYield > 0 || totalBought > 0) && nextQty > available) {
       return res.status(400).json({
         message: `Insufficient milk stock for ${nextShift === 'MORNING' ? 'Morning' : 'Evening'} shift. Available: ${Math.round(available * 10) / 10} L, requested: ${nextQty} L.`
       });

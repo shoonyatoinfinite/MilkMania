@@ -20,11 +20,9 @@ axios.interceptors.request.use(
 interface AppContextType {
   user: any;
   token: string | null;
-  theme: 'morning' | 'evening' | 'midnight';
   language: 'en' | 'hi';
   login: (username: string, password: string, rememberMe: boolean) => Promise<boolean>;
   logout: () => void;
-  toggleTheme: () => void;
   setLanguage: (lang: 'en' | 'hi') => void;
   updateProfile: (name: string, password?: string) => Promise<boolean>;
   portalUsers: any[];
@@ -38,24 +36,18 @@ interface AppContextType {
   handleInstallPrompt: () => Promise<void>;
   
   // Data State
-  animals: any[];
   customers: any[];
-  productions: any[];
   sales: any[];
   payments: any[];
   expenses: any[];
   inventory: any[];
   settings: any;
   dashboardStats: any;
+  milkBought: any[];
+  enableMilkBought: boolean;
   
   // Operations
   refreshAllData: (startDate?: string, endDate?: string) => Promise<void>;
-  createAnimal: (data: any) => Promise<boolean>;
-  updateAnimal: (id: string, data: any) => Promise<boolean>;
-  deleteAnimal: (id: string) => Promise<boolean>;
-  createProduction: (data: any) => Promise<boolean>;
-  updateProduction: (id: string, data: any) => Promise<boolean>;
-  deleteProduction: (id: string) => Promise<boolean>;
   createCustomer: (data: any) => Promise<boolean>;
   updateCustomer: (id: string, data: any) => Promise<boolean>;
   deleteCustomer: (id: string) => Promise<boolean>;
@@ -71,6 +63,10 @@ interface AppContextType {
   createInventoryItem: (data: any) => Promise<boolean>;
   updateInventoryItem: (id: string, data: any) => Promise<boolean>;
   deleteInventoryItem: (id: string) => Promise<boolean>;
+  createMilkBought: (data: any) => Promise<boolean>;
+  updateMilkBought: (id: string, data: any) => Promise<boolean>;
+  deleteMilkBought: (id: string) => Promise<boolean>;
+  toggleMilkBoughtSetting: (enabled: boolean) => Promise<boolean>;
   updateSettingsList: (settingsArray: any[]) => Promise<boolean>;
   triggerBackup: () => void;
   triggerRestore: (backupJson: any) => Promise<boolean>;
@@ -87,20 +83,18 @@ const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem('milkmania_token'));
-  const [theme, setTheme] = useState<'morning' | 'evening' | 'midnight'>('morning');
   const [language, setLanguageState] = useState<'en' | 'hi'>('en');
   const [loading, setLoading] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Business Data State
-  const [animals, setAnimals] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
-  const [productions, setProductions] = useState<any[]>([]);
   const [sales, setSales] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
   const [settings, setSettings] = useState<any>({});
+  const [milkBought, setMilkBought] = useState<any[]>([]);
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [portalUsers, setPortalUsers] = useState<any[]>([]);
   const [isInstallable, setIsInstallable] = useState(false);
@@ -134,12 +128,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setLoading(false);
     };
 
-    // Load saved preferences
-    const savedTheme = localStorage.getItem('milkmania_theme') as 'morning' | 'evening' | 'midnight';
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.setAttribute('data-theme', savedTheme);
-    }
     const savedLang = localStorage.getItem('milkmania_lang') as 'en' | 'hi';
     if (savedLang) {
       setLanguageState(savedLang);
@@ -147,39 +135,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     initAuth();
   }, [token]);
-
-  // Global print listener to force light theme for receipt/PDF printing
-  useEffect(() => {
-    let originalTheme: string | null = null;
-
-    const handleBeforePrint = () => {
-      originalTheme = document.documentElement.getAttribute('data-theme');
-      document.documentElement.setAttribute('data-theme', 'morning');
-    };
-
-    const handleAfterPrint = () => {
-      if (originalTheme) {
-        document.documentElement.setAttribute('data-theme', originalTheme);
-      } else {
-        document.documentElement.removeAttribute('data-theme');
-      }
-    };
-
-    window.addEventListener('beforeprint', handleBeforePrint);
-    window.addEventListener('afterprint', handleAfterPrint);
-
-    return () => {
-      window.removeEventListener('beforeprint', handleBeforePrint);
-      window.removeEventListener('afterprint', handleAfterPrint);
-    };
-  }, []);
-
-  const toggleTheme = () => {
-    const nextTheme = theme === 'morning' ? 'evening' : theme === 'evening' ? 'midnight' : 'morning';
-    setTheme(nextTheme);
-    document.documentElement.setAttribute('data-theme', nextTheme);
-    localStorage.setItem('milkmania_theme', nextTheme);
-  };
 
   const setLanguage = (lang: 'en' | 'hi') => {
     setLanguageState(lang);
@@ -203,9 +158,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const logout = () => {
     setUser(null);
     setToken(null);
-    setAnimals([]);
     setCustomers([]);
-    setProductions([]);
     setSales([]);
     setPayments([]);
     setExpenses([]);
@@ -215,44 +168,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   useEffect(() => {
-    const checkStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
-    setIsStandalone(!!checkStandalone);
+    const isPwaInstalled = 
+      window.matchMedia('(display-mode: standalone)').matches || 
+      (navigator as any).standalone === true ||
+      localStorage.getItem('milkmania_pwa_installed') === 'true';
+
+    setIsStandalone(!!isPwaInstalled);
 
     const handleAppInstalled = () => {
+      console.log('PWA app was successfully installed!');
+      localStorage.setItem('milkmania_pwa_installed', 'true');
       setIsStandalone(true);
       setIsInstallable(false);
+      setDeferredPrompt(null);
     };
 
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // If early script captured the prompt, grab it
-    if ((window as any).deferredPrompt) {
-      setDeferredPrompt((window as any).deferredPrompt);
-      setIsInstallable(true);
+    if (!isPwaInstalled) {
+      if ((window as any).deferredPrompt) {
+        setDeferredPrompt((window as any).deferredPrompt);
+        setIsInstallable(true);
+      }
+
+      const handleBeforeInstall = (e: any) => {
+        e.preventDefault();
+        setDeferredPrompt(e);
+        setIsInstallable(true);
+        (window as any).deferredPrompt = e;
+      };
+
+      window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+        window.removeEventListener('appinstalled', handleAppInstalled);
+      };
+    } else {
+      setIsInstallable(false);
+      return () => {
+        window.removeEventListener('appinstalled', handleAppInstalled);
+      };
     }
-
-    const handleBeforeInstall = (e: any) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      setIsInstallable(true);
-      (window as any).deferredPrompt = e;
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
-      window.removeEventListener('appinstalled', handleAppInstalled);
-    };
   }, []);
 
   const handleInstallPrompt = async () => {
     if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`User installation decision: ${outcome}`);
-    setDeferredPrompt(null);
-    setIsInstallable(false);
+    try {
+      deferredPrompt.prompt();
+      const choiceResult = await deferredPrompt.userChoice;
+      console.log(`User installation decision: ${choiceResult.outcome}`);
+      if (choiceResult.outcome === 'accepted') {
+        localStorage.setItem('milkmania_pwa_installed', 'true');
+        setIsStandalone(true);
+        setIsInstallable(false);
+      }
+      setDeferredPrompt(null);
+    } catch (err) {
+      console.error('Error handling install prompt:', err);
+    }
   };
 
   useEffect(() => {
@@ -383,35 +357,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         : `${API_BASE}/dashboard`;
 
       const [
-        animalsRes,
         custRes,
-        prodRes,
         salesRes,
         payRes,
         expRes,
         invRes,
         settingsRes,
-        dashRes
+        dashRes,
+        boughtRes
       ] = await Promise.all([
-        axios.get(`${API_BASE}/animals`),
         axios.get(`${API_BASE}/customers`),
-        axios.get(`${API_BASE}/production`),
         axios.get(`${API_BASE}/sales`),
         axios.get(`${API_BASE}/payments`),
         axios.get(`${API_BASE}/expenses`),
         axios.get(`${API_BASE}/inventory`),
         axios.get(`${API_BASE}/settings`),
-        axios.get(dashUrl)
+        axios.get(dashUrl),
+        axios.get(`${API_BASE}/milk-bought`).catch(() => ({ data: [] }))
       ]);
 
-      setAnimals(animalsRes.data);
       setCustomers(custRes.data);
-      setProductions(prodRes.data);
       setSales(salesRes.data);
       setPayments(payRes.data);
       setExpenses(expRes.data);
       setInventory(invRes.data);
       setDashboardStats(dashRes.data);
+      setMilkBought(boughtRes.data || []);
       await fetchPortalUsers();
 
       const settingsMap = settingsRes.data.reduce((acc: any, s: any) => {
@@ -429,74 +400,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     console.error(err);
     const msg = err.response?.data?.message || defaultMsg;
     alert(msg);
-  };
-
-  // Animals CRUD
-  const createAnimal = async (data: any): Promise<boolean> => {
-    try {
-      await axios.post(`${API_BASE}/animals`, data);
-      await refreshAllData();
-      return true;
-    } catch (err) {
-      handleError(err, 'Error creating animal entry.');
-      return false;
-    }
-  };
-
-  const updateAnimal = async (id: string, data: any): Promise<boolean> => {
-    try {
-      await axios.put(`${API_BASE}/animals/${id}`, data);
-      await refreshAllData();
-      return true;
-    } catch (err) {
-      handleError(err, 'Error updating animal entry.');
-      return false;
-    }
-  };
-
-  const deleteAnimal = async (id: string): Promise<boolean> => {
-    try {
-      await axios.delete(`${API_BASE}/animals/${id}`);
-      await refreshAllData();
-      return true;
-    } catch (err) {
-      handleError(err, 'Error deleting animal entry.');
-      return false;
-    }
-  };
-
-  // Productions CRUD
-  const createProduction = async (data: any): Promise<boolean> => {
-    try {
-      await axios.post(`${API_BASE}/production`, data);
-      await refreshAllData();
-      return true;
-    } catch (err) {
-      handleError(err, 'Error recording milk production yield.');
-      return false;
-    }
-  };
-
-  const updateProduction = async (id: string, data: any): Promise<boolean> => {
-    try {
-      await axios.put(`${API_BASE}/production/${id}`, data);
-      await refreshAllData();
-      return true;
-    } catch (err) {
-      handleError(err, 'Error updating milk production log.');
-      return false;
-    }
-  };
-
-  const deleteProduction = async (id: string): Promise<boolean> => {
-    try {
-      await axios.delete(`${API_BASE}/production/${id}`);
-      await refreshAllData();
-      return true;
-    } catch (err) {
-      handleError(err, 'Error deleting milk production log.');
-      return false;
-    }
   };
 
   // Customers CRUD
@@ -669,6 +572,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Milk Bought CRUD
+  const createMilkBought = async (data: any): Promise<boolean> => {
+    try {
+      await axios.post(`${API_BASE}/milk-bought`, data);
+      await refreshAllData();
+      return true;
+    } catch (err) {
+      handleError(err, 'Error recording milk bought.');
+      return false;
+    }
+  };
+
+  const updateMilkBought = async (id: string, data: any): Promise<boolean> => {
+    try {
+      await axios.put(`${API_BASE}/milk-bought/${id}`, data);
+      await refreshAllData();
+      return true;
+    } catch (err) {
+      handleError(err, 'Error updating milk bought record.');
+      return false;
+    }
+  };
+
+  const deleteMilkBought = async (id: string): Promise<boolean> => {
+    try {
+      await axios.delete(`${API_BASE}/milk-bought/${id}`);
+      await refreshAllData();
+      return true;
+    } catch (err) {
+      handleError(err, 'Error deleting milk bought record.');
+      return false;
+    }
+  };
+
+  const toggleMilkBoughtSetting = async (enabled: boolean): Promise<boolean> => {
+    try {
+      await updateSettingsList([
+        {
+          key: 'enable_milk_bought',
+          value: enabled ? 'true' : 'false',
+          description: 'Toggle to enable or hide Milk Bought feature'
+        }
+      ]);
+      return true;
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
+  };
+
+  const enableMilkBought = settings?.enable_milk_bought === 'true';
+
   // Settings update
   const updateSettingsList = async (settingsArray: any[]): Promise<boolean> => {
     try {
@@ -716,31 +671,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         user,
         token,
-        theme,
         language,
         login,
         logout,
-        toggleTheme,
         setLanguage,
         updateProfile,
         
-        animals,
         customers,
-        productions,
         sales,
         payments,
         expenses,
         inventory,
         settings,
         dashboardStats,
+        milkBought,
+        enableMilkBought,
         
         refreshAllData,
-        createAnimal,
-        updateAnimal,
-        deleteAnimal,
-        createProduction,
-        updateProduction,
-        deleteProduction,
         createCustomer,
         updateCustomer,
         deleteCustomer,
@@ -756,6 +703,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createInventoryItem,
         updateInventoryItem,
         deleteInventoryItem,
+        createMilkBought,
+        updateMilkBought,
+        deleteMilkBought,
+        toggleMilkBoughtSetting,
         updateSettingsList,
         triggerBackup,
         triggerRestore,

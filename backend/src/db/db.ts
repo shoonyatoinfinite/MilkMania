@@ -124,6 +124,7 @@ const jsonExpenses = new JSONCollection<any>('expenses.json');
 const jsonInventory = new JSONCollection<any>('inventory.json');
 const jsonSettings = new JSONCollection<any>('settings.json');
 const jsonAdjustments = new JSONCollection<any>('adjustments.json');
+const jsonMilkBought = new JSONCollection<any>('milk_bought.json');
 
 // Unified DB Adapter
 export const db = {
@@ -250,11 +251,21 @@ export const db = {
       if (USE_MOCK_DB) return jsonCustomers.findUnique(args.where);
       return prisma!.customer.findUnique({ where: args.where });
     },
-    create: async (args: { data: { name: string; phone?: string; village: string; address?: string; pricePerLiter: number; customerType: string; status: string; notes?: string } }) => {
+    findFirst: async (args: { where: { phone?: string; id?: string; status?: string } }) => {
+      if (USE_MOCK_DB) {
+        return jsonCustomers.findMany((c: any) => {
+          if (args.where.phone && c.phone !== args.where.phone) return false;
+          if (args.where.status && c.status !== args.where.status) return false;
+          return true;
+        })[0] || null;
+      }
+      return prisma!.customer.findFirst({ where: args.where as any });
+    },
+    create: async (args: { data: { name: string; phone?: string; pin?: string; village: string; address?: string; pricePerLiter: number; customerType: string; status: string; notes?: string } }) => {
       if (USE_MOCK_DB) return jsonCustomers.create(args.data);
       return prisma!.customer.create({ data: args.data });
     },
-    update: async (args: { where: { id: string }; data: { name?: string; phone?: string; village?: string; address?: string; pricePerLiter?: number; customerType?: string; status?: string; notes?: string } }) => {
+    update: async (args: { where: { id: string }; data: { name?: string; phone?: string; pin?: string; village?: string; address?: string; pricePerLiter?: number; customerType?: string; status?: string; notes?: string } }) => {
       if (USE_MOCK_DB) return jsonCustomers.update(args.where, args.data);
       return prisma!.customer.update({ where: args.where, data: args.data });
     },
@@ -380,9 +391,11 @@ export const db = {
   },
 
   expenses: {
-    findMany: async (args?: { where?: { date?: { gte?: Date | string; lte?: Date | string } } }) => {
+    findMany: async (args?: { where?: { date?: { gte?: Date | string; lte?: Date | string }; animalId?: string; category?: string } }) => {
       if (USE_MOCK_DB) {
         return jsonExpenses.findMany((item: any) => {
+          if (args?.where?.animalId && item.animalId !== args.where.animalId) return false;
+          if (args?.where?.category && item.category !== args.where.category) return false;
           if (args?.where?.date) {
             const itemDate = new Date(item.date).getTime();
             if (args.where.date.gte && itemDate < new Date(args.where.date.gte).getTime()) return false;
@@ -396,12 +409,12 @@ export const db = {
         orderBy: { date: 'desc' }
       });
     },
-    create: async (args: { data: { date: Date | string; category: string; amount: number; description?: string } }) => {
+    create: async (args: { data: { date: Date | string; category: string; amount: number; description?: string; animalId?: string } }) => {
       const dataToSave = { ...args.data, date: new Date(args.data.date) };
       if (USE_MOCK_DB) return jsonExpenses.create(args.data);
       return prisma!.expense.create({ data: dataToSave });
     },
-    update: async (args: { where: { id: string }; data: { date?: Date | string; category?: string; amount?: number; description?: string } }) => {
+    update: async (args: { where: { id: string }; data: { date?: Date | string; category?: string; amount?: number; description?: string; animalId?: string } }) => {
       const dataToSave = { ...args.data };
       if (args.data.date) {
         dataToSave.date = new Date(args.data.date) as any;
@@ -469,6 +482,47 @@ export const db = {
     delete: async (args: { where: { id: string } }) => {
       if (USE_MOCK_DB) return jsonAdjustments.delete(args.where);
       return prisma!.sessionAdjustment.delete({ where: args.where });
+    }
+  },
+
+  milkBought: {
+    findMany: async (args?: { where?: { date?: { gte?: Date | string; lte?: Date | string }; shift?: string } }) => {
+      if (USE_MOCK_DB) {
+        return jsonMilkBought.findMany((item: any) => {
+          if (args?.where?.shift && item.shift !== args.where.shift) return false;
+          if (args?.where?.date) {
+            const itemDate = new Date(item.date).getTime();
+            if (args.where.date.gte && itemDate < new Date(args.where.date.gte).getTime()) return false;
+            if (args.where.date.lte && itemDate > new Date(args.where.date.lte).getTime()) return false;
+          }
+          return true;
+        });
+      }
+      return prisma!.milkBought.findMany({
+        where: args?.where as any,
+        orderBy: { date: 'desc' }
+      });
+    },
+    findUnique: async (args: { where: { id: string } }) => {
+      if (USE_MOCK_DB) return jsonMilkBought.findUnique(args.where);
+      return prisma!.milkBought.findUnique({ where: args.where });
+    },
+    create: async (args: { data: { supplierName: string; date: Date | string; shift?: string; quantity: number; rate: number; amount: number; fat?: number; snf?: number; paymentMethod?: string; notes?: string } }) => {
+      const dataToSave = { ...args.data, date: new Date(args.data.date) };
+      if (USE_MOCK_DB) return jsonMilkBought.create(args.data);
+      return prisma!.milkBought.create({ data: dataToSave });
+    },
+    update: async (args: { where: { id: string }; data: { supplierName?: string; date?: Date | string; shift?: string; quantity?: number; rate?: number; amount?: number; fat?: number; snf?: number; paymentMethod?: string; notes?: string } }) => {
+      const dataToSave = { ...args.data };
+      if (args.data.date) {
+        dataToSave.date = new Date(args.data.date) as any;
+      }
+      if (USE_MOCK_DB) return jsonMilkBought.update(args.where, args.data);
+      return prisma!.milkBought.update({ where: args.where, data: dataToSave as any });
+    },
+    delete: async (args: { where: { id: string } }) => {
+      if (USE_MOCK_DB) return jsonMilkBought.delete(args.where);
+      return prisma!.milkBought.delete({ where: args.where });
     }
   }
 };

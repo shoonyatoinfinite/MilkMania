@@ -52,6 +52,7 @@ model Customer {
   id             String      @id @default(uuid())
   name           String
   phone          String?
+  pin            String?     @default("123456")
   village        String
   address        String?
   pricePerLiter  Float
@@ -97,6 +98,7 @@ model Expense {
   category    String   // FEED, MEDICINE, TRANSPORT, ELECTRICITY, WATER, REPAIRS, EQUIPMENT, VETERINARY, MISCELLANEOUS
   amount      Float
   description String?
+  animalId    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -131,3 +133,18 @@ model SessionAdjustment {
   updatedAt   DateTime @updatedAt
 }
 
+model MilkBought {
+  id            String   @id @default(uuid())
+  supplierName  String
+  date          DateTime
+  shift         String   @default("MORNING") // MORNING, EVENING
+  quantity      Float
+  rate          Float
+  amount        Float
+  fat           Float?
+  snf           Float?
+  paymentMethod String   @default("CASH") // CASH, UPI, PENDING
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}

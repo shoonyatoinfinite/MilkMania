@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { useTranslation } from '../utils/translations';
-import { Plus, Edit3, Trash2, BookOpen, Phone, MapPin, X } from 'lucide-react';
+import { Plus, Edit3, Trash2, BookOpen, Phone, MapPin, X, Key } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
 
@@ -40,6 +40,7 @@ export const Customers: React.FC = () => {
   const [form, setForm] = useState({
     name: '',
     phone: '',
+    pin: '123456',
     village: '',
     address: '',
     pricePerLiter: '',
@@ -53,6 +54,7 @@ export const Customers: React.FC = () => {
     setForm({
       name: '',
       phone: '',
+      pin: '123456',
       village: '',
       address: '',
       pricePerLiter: '',
@@ -68,6 +70,7 @@ export const Customers: React.FC = () => {
     setForm({
       name: c.name,
       phone: c.phone || '',
+      pin: c.pin || '123456',
       village: c.village,
       address: c.address || '',
       pricePerLiter: String(c.pricePerLiter),
@@ -82,6 +85,11 @@ export const Customers: React.FC = () => {
     e.preventDefault();
     if (form.phone && form.phone.length !== 10) {
       alert(language === 'hi' ? 'मोबाइल नंबर बिल्कुल 10 अंकों का होना चाहिए।' : 'Mobile number must be exactly 10 digits.');
+      return;
+    }
+
+    if (form.pin && !/^\d{6}$/.test(form.pin)) {
+      alert(language === 'hi' ? 'पिन ठीक 6 अंकों का होना चाहिए।' : 'PIN must be exactly 6 digits.');
       return;
     }
 
@@ -271,7 +279,7 @@ export const Customers: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="flex flex-col gap-2 text-xs text-dairy-text/70 mb-6">
+                  <div className="flex flex-col gap-2 text-xs text-dairy-text/70 mb-4">
                     <div className="flex items-center gap-2">
                       <Phone className="w-3.5 h-3.5 text-dairy-sky" />
                       <span>{c.phone || 'No phone'}</span>
@@ -282,6 +290,26 @@ export const Customers: React.FC = () => {
                     </div>
                     <div className="mt-1 font-bold text-dairy-text">
                       💰 {t('rate')}: <span className="text-dairy-sky">₹{c.pricePerLiter}/L</span>
+                    </div>
+
+                    {/* Customer Portal PIN display */}
+                    <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-sky-50/70 border border-sky-100 text-[11px] font-bold text-dairy-sky mt-1">
+                      <span className="flex items-center gap-1.5">
+                        <Key className="w-3.5 h-3.5 text-dairy-sky" />
+                        <span>{language === 'hi' ? 'लॉगिन पिन:' : 'Portal PIN:'} <span className="font-space font-extrabold tracking-widest text-dairy-text">{c.pin || '123456'}</span></span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(c.pin || '123456');
+                          alert(language === 'hi' ? `पिन ${c.pin || '123456'} कॉपी हो गया!` : `PIN ${c.pin || '123456'} copied!`);
+                        }}
+                        className="px-2 py-0.5 rounded-lg bg-white border border-sky-200 text-[10px] text-dairy-sky hover:bg-sky-50 shadow-2xs active:scale-95 transition-all"
+                        title="Copy PIN"
+                      >
+                        {language === 'hi' ? 'कॉपी' : 'Copy'}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -367,16 +395,34 @@ export const Customers: React.FC = () => {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-dairy-text/60">Village</label>
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-bold text-dairy-text/60">{language === 'hi' ? 'लॉगिन पिन' : 'Login PIN'}</label>
+                    <span className="text-[10px] text-dairy-sky font-bold">6 Digits</span>
+                  </div>
                   <input
                     type="text"
-                    placeholder="e.g. Bhaini Maharajpur"
-                    value={form.village}
-                    onChange={(e) => setForm({ ...form, village: e.target.value })}
-                    className="w-full px-4 py-3 rounded-2xl text-sm font-semibold glass-input text-dairy-text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    placeholder="123456"
+                    value={form.pin}
+                    onChange={(e) => setForm({ ...form, pin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                    className="w-full px-4 py-3 rounded-2xl text-sm font-space font-bold tracking-widest glass-input text-dairy-text"
                     required
                   />
                 </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-dairy-text/60">Village</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Bhaini Maharajpur"
+                  value={form.village}
+                  onChange={(e) => setForm({ ...form, village: e.target.value })}
+                  className="w-full px-4 py-3 rounded-2xl text-sm font-semibold glass-input text-dairy-text"
+                  required
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -655,28 +701,38 @@ export const Customers: React.FC = () => {
 
           {/* Range */}
           <div className="mb-6 bg-white/80 border border-sky-100 p-4 rounded-2xl flex justify-between items-center text-xs shadow-sm relative z-10">
-            <p className="font-semibold"><strong className="text-sky-700">Billing Period (अवधि):</strong> {new Date(printStart).toLocaleDateString(language === 'en' ? 'en-US' : 'hi-IN')} to {new Date(printEnd).toLocaleDateString(language === 'en' ? 'en-US' : 'hi-IN')}</p>
-            <p className="font-semibold"><strong className="text-sky-700">Date Generated:</strong> {new Date().toLocaleDateString()}</p>
+            <p className="font-semibold"><strong className="text-sky-700">{language === 'hi' ? 'बिलिंग अवधि:' : 'Billing Period:'}</strong> {new Date(printStart).toLocaleDateString(language === 'en' ? 'en-US' : 'hi-IN')} {language === 'hi' ? 'से' : 'to'} {new Date(printEnd).toLocaleDateString(language === 'en' ? 'en-US' : 'hi-IN')}</p>
+            <p className="font-semibold"><strong className="text-sky-700">{language === 'hi' ? 'दिनांक:' : 'Date Generated:'}</strong> {new Date().toLocaleDateString()}</p>
           </div>
 
           {/* Sales Logs */}
           <div className="mb-6 relative z-10">
-            <h3 className="text-sm font-space font-bold border-b-2 border-sky-100 pb-2 mb-3 text-sky-800">1. Milk Purchase Summary (दूध का विवरण)</h3>
+            <h3 className="text-sm font-space font-bold border-b-2 border-sky-100 pb-2 mb-3 text-sky-800">
+              {language === 'hi' ? '1. दूध खरीद का विवरण' : '1. Milk Purchase Summary'}
+            </h3>
             <div className="grid grid-cols-4 gap-4 bg-white/70 border border-sky-100 p-5 rounded-2xl shadow-sm text-center">
               <div className="bg-sky-50/50 p-4 rounded-xl border border-sky-100/50">
-                <p className="text-[10px] font-bold text-sky-700 uppercase tracking-wider mb-1">Morning Total (सुबह का कुल)</p>
+                <p className="text-[10px] font-bold text-sky-700 uppercase tracking-wider mb-1">
+                  {language === 'hi' ? 'सुबह का कुल' : 'Morning Total'}
+                </p>
                 <p className="font-space font-extrabold text-lg text-sky-950">{sessionTotals.morningLiters} L</p>
               </div>
               <div className="bg-sky-50/50 p-4 rounded-xl border border-sky-100/50">
-                <p className="text-[10px] font-bold text-sky-700 uppercase tracking-wider mb-1">Evening Total (शाम का कुल)</p>
+                <p className="text-[10px] font-bold text-sky-700 uppercase tracking-wider mb-1">
+                  {language === 'hi' ? 'शाम का कुल' : 'Evening Total'}
+                </p>
                 <p className="font-space font-extrabold text-lg text-sky-950">{sessionTotals.eveningLiters} L</p>
               </div>
               <div className="bg-sky-600 p-4 rounded-xl text-white shadow-md flex flex-col justify-center">
-                <p className="text-[10px] font-bold opacity-90 uppercase tracking-wider mb-0.5">Grand Total Milk (कुल लीटर)</p>
+                <p className="text-[10px] font-bold opacity-90 uppercase tracking-wider mb-0.5">
+                  {language === 'hi' ? 'कुल दूध' : 'Grand Total Milk'}
+                </p>
                 <p className="font-space font-extrabold text-lg">{sessionTotals.totalLiters} L</p>
               </div>
               <div className="bg-emerald-600 p-4 rounded-xl text-white shadow-md flex flex-col justify-center">
-                <p className="text-[10px] font-bold opacity-90 uppercase tracking-wider mb-0.5">Total Bill (कुल मूल्य)</p>
+                <p className="text-[10px] font-bold opacity-90 uppercase tracking-wider mb-0.5">
+                  {language === 'hi' ? 'कुल मूल्य' : 'Total Bill'}
+                </p>
                 <p className="font-space font-extrabold text-lg">₹{sessionTotals.totalAmount}</p>
               </div>
             </div>
@@ -684,14 +740,16 @@ export const Customers: React.FC = () => {
 
           {/* Payments Logs */}
           <div className="mb-6 relative z-10">
-            <h3 className="text-sm font-space font-bold border-b-2 border-sky-100 pb-2 mb-3 text-sky-800">2. Payments Deposited (जमा राशि)</h3>
+            <h3 className="text-sm font-space font-bold border-b-2 border-sky-100 pb-2 mb-3 text-sky-800">
+              {language === 'hi' ? '2. जमा राशि (भुगतान)' : '2. Payments Deposited'}
+            </h3>
             <table className="w-full text-xs print-receipt-table rounded-2xl overflow-hidden shadow-sm">
               <thead>
                 <tr className="text-left font-bold">
-                  <th className="py-2.5 px-4">Date</th>
-                  <th className="px-4">Payment Mode</th>
-                  <th className="px-4">Remarks</th>
-                  <th className="text-right px-4">Amount (₹)</th>
+                  <th className="py-2.5 px-4">{language === 'hi' ? 'तारीख' : 'Date'}</th>
+                  <th className="px-4">{language === 'hi' ? 'भुगतान माध्यम' : 'Payment Mode'}</th>
+                  <th className="px-4">{language === 'hi' ? 'विवरण' : 'Remarks'}</th>
+                  <th className="text-right px-4">{language === 'hi' ? 'राशि (₹)' : 'Amount (₹)'}</th>
                 </tr>
               </thead>
               <tbody className="bg-white/60">
@@ -709,7 +767,9 @@ export const Customers: React.FC = () => {
                 ))}
                 {printStatement.payments.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="py-6 text-center text-gray-400 font-bold">No payments deposited in this date range.</td>
+                    <td colSpan={4} className="py-6 text-center text-gray-400 font-bold">
+                      {language === 'hi' ? 'इस अवधि में कोई भुगतान दर्ज नहीं है।' : 'No payments deposited in this date range.'}
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -719,25 +779,25 @@ export const Customers: React.FC = () => {
           {/* Totals Summary */}
           <div className="print-receipt-summary grid grid-cols-2 text-xs font-bold gap-4 relative z-10">
             <div className="flex flex-col gap-1.5 leading-relaxed text-slate-700">
-              <p>Milk Rate (दूध की दर): <span className="font-space font-bold">₹{ledgerCustomer.pricePerLiter} / L</span></p>
-              <p>Previous Balance (पिछला बकाया): <span className="font-space font-bold">₹{printStatement.previousBalance}</span></p>
-              <p>Total Liters Purchased (इस अवधि का दूध): <span className="font-space font-bold text-sky-700">{printStatement.liters} L</span></p>
-              <p>Total Milk Value (इस अवधि का मूल्य): <span className="font-space font-bold">₹{printStatement.due}</span></p>
-              <p>Total Deposited (इस अवधि का भुगतान): <span className="font-space font-bold text-emerald-600">₹{printStatement.paid}</span></p>
+              <p>{language === 'hi' ? 'दूध की दर:' : 'Milk Rate:'} <span className="font-space font-bold">₹{ledgerCustomer.pricePerLiter} / L</span></p>
+              <p>{language === 'hi' ? 'पिछला बकाया:' : 'Previous Balance:'} <span className="font-space font-bold">₹{printStatement.previousBalance}</span></p>
+              <p>{language === 'hi' ? 'कुल खरीदा दूध:' : 'Total Liters Purchased:'} <span className="font-space font-bold text-sky-700">{printStatement.liters} L</span></p>
+              <p>{language === 'hi' ? 'इस अवधि का कुल मूल्य:' : 'Total Milk Value:'} <span className="font-space font-bold">₹{printStatement.due}</span></p>
+              <p>{language === 'hi' ? 'कुल जमा राशि:' : 'Total Deposited:'} <span className="font-space font-bold text-emerald-600">₹{printStatement.paid}</span></p>
             </div>
             
             <div className="text-right flex flex-col justify-between items-end">
               {printStatement.totalOutstanding < 0 ? (
                 <div className="text-sm font-space font-extrabold text-white bg-emerald-600 px-4 py-2.5 rounded-xl inline-block shadow-sm">
-                  Advance Balance (अग्रिम राशि): ₹{Math.abs(printStatement.totalOutstanding)}
+                  {language === 'hi' ? 'अग्रिम राशि:' : 'Advance Balance:'} ₹{Math.abs(printStatement.totalOutstanding)}
                 </div>
               ) : (
                 <div className="text-sm font-space font-extrabold text-white bg-sky-600 px-4 py-2.5 rounded-xl inline-block shadow-sm">
-                  Net Balance Dues (कुल बकाया): ₹{printStatement.totalOutstanding}
+                  {language === 'hi' ? 'कुल बकाया:' : 'Net Balance Dues:'} ₹{printStatement.totalOutstanding}
                 </div>
               )}
               <p className="text-[9px] text-slate-400 font-normal mt-4">
-                This is an autogenerated invoice generated by Milk Mania Portal.
+                {language === 'hi' ? 'यह बिल मिल्क मेनिया पोर्टल द्वारा स्वतः उत्पन्न किया गया है।' : 'This is an autogenerated invoice generated by Milk Mania Portal.'}
               </p>
             </div>
           </div>

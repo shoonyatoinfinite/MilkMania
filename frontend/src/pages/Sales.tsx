@@ -6,14 +6,13 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianG
 
 const CustomerSalesTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
-    const isMidnight = document.documentElement.getAttribute('data-theme') === 'midnight';
     return (
       <div className="glass-card p-3 rounded-2xl shadow-xl text-left">
-        <p className={`text-[9px] font-extrabold uppercase mb-1 ${isMidnight ? 'text-white/40' : 'text-dairy-text/40'}`}>{label}</p>
+        <p className="text-[9px] font-extrabold uppercase mb-1 text-dairy-text/40">{label}</p>
         <div className="flex items-center gap-2 text-xs font-bold">
           <span className="w-2 h-2 rounded-full bg-dairy-sky" />
-          <span className={isMidnight ? 'text-white/75' : 'text-dairy-text/75'}>Quantity:</span>
-          <span className={`font-space font-extrabold ${isMidnight ? 'text-white' : 'text-dairy-text'}`}>{payload[0].value} L</span>
+          <span className="text-dairy-text/75">Quantity:</span>
+          <span className="font-space font-extrabold text-dairy-text">{payload[0].value} L</span>
         </div>
       </div>
     );
@@ -80,10 +79,14 @@ export const Sales: React.FC = () => {
     return map;
   }, [sales, payments]);
 
+  const getAutoShift = (): 'MORNING' | 'EVENING' => {
+    return new Date().getHours() >= 13 ? 'EVENING' : 'MORNING';
+  };
+
   // Form state
   const [form, setForm] = useState({
     customerId: '',
-    shift: '',
+    shift: getAutoShift(),
     quantity: '',
     rate: '',
     paymentMethod: 'PENDING',
@@ -93,7 +96,7 @@ export const Sales: React.FC = () => {
   const handleOpenAdd = () => {
     setForm({
       customerId: '',
-      shift: '',
+      shift: getAutoShift(),
       quantity: '',
       rate: '',
       paymentMethod: 'PENDING',
@@ -521,9 +524,9 @@ export const Sales: React.FC = () => {
                             <feDropShadow dx="0" dy="5" stdDeviation="2.5" floodColor="#0EA5E9" floodOpacity="0.2" />
                           </filter>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={document.documentElement.getAttribute('data-theme') === 'midnight' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'} />
-                        <XAxis dataKey="date" stroke={document.documentElement.getAttribute('data-theme') === 'midnight' ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)'} style={{ fontSize: 9, fontWeight: 'bold' }} tickLine={false} axisLine={false} />
-                        <YAxis stroke={document.documentElement.getAttribute('data-theme') === 'midnight' ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)'} style={{ fontSize: 9, fontWeight: 'bold' }} tickLine={false} axisLine={false} />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.04)" />
+                        <XAxis dataKey="date" stroke="rgba(0,0,0,0.3)" style={{ fontSize: 9, fontWeight: 'bold' }} tickLine={false} axisLine={false} />
+                        <YAxis stroke="rgba(0,0,0,0.3)" style={{ fontSize: 9, fontWeight: 'bold' }} tickLine={false} axisLine={false} />
                         <Tooltip content={<CustomerSalesTooltip />} />
                         <Line type="monotone" dataKey="quantity" name="Liters" stroke="#0EA5E9" strokeWidth={3.5} dot={{ r: 3, stroke: '#0EA5E9', strokeWidth: 1.5, fill: '#fff' }} activeDot={{ r: 5 }} filter="url(#shadowCust)" />
                       </LineChart>

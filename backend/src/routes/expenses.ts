@@ -30,7 +30,7 @@ router.get('/', async (req: any, res: Response) => {
 
 // POST /api/expenses
 router.post('/', async (req: any, res: Response) => {
-  const { date, category, amount, description } = req.body;
+  const { date, category, amount, description, animalId } = req.body;
 
   if (!date || !category || amount === undefined) {
     return res.status(400).json({ message: 'Date, category, and amount are required.' });
@@ -43,6 +43,7 @@ router.post('/', async (req: any, res: Response) => {
         category,
         amount: parseFloat(amount),
         description: description || '',
+        animalId: animalId || null,
       }
     });
 
@@ -57,7 +58,7 @@ router.post('/', async (req: any, res: Response) => {
 // PUT /api/expenses/:id
 router.put('/:id', async (req: any, res: Response) => {
   const { id } = req.params;
-  const { date, category, amount, description } = req.body;
+  const { date, category, amount, description, animalId } = req.body;
 
   try {
     const updateData: any = {};
@@ -65,6 +66,7 @@ router.put('/:id', async (req: any, res: Response) => {
     if (category) updateData.category = category;
     if (amount !== undefined) updateData.amount = parseFloat(amount);
     if (description !== undefined) updateData.description = description;
+    if (animalId !== undefined) updateData.animalId = animalId;
 
     const updated = await db.expenses.update({
       where: { id },

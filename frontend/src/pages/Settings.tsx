@@ -7,10 +7,10 @@ export const Settings: React.FC = () => {
   const { 
     settings, 
     updateSettingsList, 
-    theme, 
-    toggleTheme, 
     language, 
     setLanguage,
+    enableMilkBought,
+    toggleMilkBoughtSetting,
     portalUsers,
     createPortalUser,
     deletePortalUser,
@@ -26,7 +26,11 @@ export const Settings: React.FC = () => {
   const { t } = useTranslation(language);
 
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-  const showPWASection = !isStandalone && (isInstallable || isIOS);
+  const isAppInstalled = 
+    isStandalone || 
+    localStorage.getItem('milkmania_pwa_installed') === 'true' || 
+    (typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches);
+  const showPWASection = !isAppInstalled;
 
   const [rate, setRate] = useState('65');
   const [bulkRate, setBulkRate] = useState('58');
@@ -176,44 +180,67 @@ export const Settings: React.FC = () => {
           </form>
         </div>
 
-        {/* UI Theme & Language Options */}
-        <div className="glass-card rounded-4xl p-6">
-          <h3 className="font-space font-bold text-lg text-dairy-text mb-4">{t('visualTheme')} & {t('language')}</h3>
-
-          <div className="flex flex-col gap-5">
-            {/* Theme switcher */}
-            <div className="flex items-center justify-between p-4 bg-white/40 border border-white/60 rounded-3xl">
-              <div>
-                <p className="text-xs font-bold text-dairy-text">{t('visualTheme')}</p>
-                <p className="text-[10px] text-dairy-text/55">Toggle morning cream vs evening cyan modes.</p>
+        {/* Milk Bought Records Toggle (Hidden by default, enable here) */}
+        <div className="glass-card rounded-4xl p-6 border-2 border-dairy-sky/20">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xl">🛒</span>
+                <h3 className="font-space font-bold text-base text-dairy-text">{t('enableMilkBoughtSetting')}</h3>
+                {enableMilkBought && (
+                  <span className="text-[10px] font-extrabold uppercase bg-dairy-green/10 text-dairy-green px-2 py-0.5 rounded-full">
+                    {language === 'hi' ? 'सक्रिय' : 'Active'}
+                  </span>
+                )}
               </div>
-              <button
-                onClick={toggleTheme}
-                className="px-4 py-2 bg-white border border-white/80 hover:bg-milk-50 text-xs font-bold text-dairy-text rounded-2xl shadow-sm"
-              >
-                {theme === 'morning' ? `🌙 ${t('evening')}` : `☀️ ${t('morning')}`}
-              </button>
+              <p className="text-xs text-dairy-text/60">
+                {t('enableMilkBoughtDesc')}
+              </p>
             </div>
 
-            {/* Language Selection */}
-            <div className="flex items-center justify-between p-4 bg-white/40 border border-white/60 rounded-3xl">
+            <button
+              type="button"
+              onClick={() => toggleMilkBoughtSetting(!enableMilkBought)}
+              className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                enableMilkBought ? 'bg-dairy-sky' : 'bg-gray-300'
+              }`}
+              role="switch"
+              aria-checked={enableMilkBought}
+            >
+              <span
+                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                  enableMilkBought ? 'translate-x-7' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* Language Options */}
+        <div className="glass-card rounded-4xl p-6">
+          <h3 className="font-space font-bold text-lg text-dairy-text mb-4">{t('language')}</h3>
+
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-sky-50/60 border border-sky-100 rounded-3xl gap-3">
               <div>
                 <p className="text-xs font-bold text-dairy-text">{t('language')}</p>
-                <p className="text-[10px] text-dairy-text/55">Select default dialect for dairy reports.</p>
+                <p className="text-[10px] text-dairy-text/60">
+                  {language === 'hi' ? 'पूरी ऐप के लिए भाषा चुनें (English / हिन्दी)' : 'Select language for the entire application'}
+                </p>
               </div>
               <div className="flex gap-2">
                 {(['en', 'hi'] as const).map((lang) => (
                   <button
                     key={lang}
                     onClick={() => setLanguage(lang)}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition-all ${
+                    className={`px-4 py-2 text-xs font-bold rounded-2xl border transition-all ${
                       language === lang
-                        ? 'bg-dairy-sky text-white border-dairy-sky shadow-sm'
-                        : 'bg-white border-white/80 hover:bg-milk-50 text-dairy-text/70'
+                        ? 'bg-dairy-sky text-white border-dairy-sky shadow-md'
+                        : 'bg-white border-sky-200 hover:bg-sky-50 text-dairy-text/70'
                     }`}
                   >
-                    {lang === 'en' && 'English'}
-                    {lang === 'hi' && 'हिन्दी'}
+                    {lang === 'en' && '🇬🇧 English'}
+                    {lang === 'hi' && '🇮🇳 हिन्दी'}
                   </button>
                 ))}
               </div>
@@ -284,7 +311,7 @@ export const Settings: React.FC = () => {
           {/* Form to Add User */}
           <form onSubmit={handleAddUser} className="flex flex-col gap-4 border-t border-white/20 pt-5">
             <h4 className="text-xs font-bold text-dairy-text/75 uppercase tracking-wider">
-              {editingUser ? 'Edit User Credentials (क्रेडेंशियल्स बदलें)' : t('addUser')}
+              {editingUser ? (language === 'hi' ? 'यूज़र क्रेडेंशियल्स बदलें' : 'Edit User Credentials') : t('addUser')}
             </h4>
             
             <div className="flex flex-col gap-1.5">
@@ -314,11 +341,11 @@ export const Settings: React.FC = () => {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-dairy-text/60">
-                  {t('password')} {editingUser && '(Optional)'}
+                  {t('password')} {editingUser && (language === 'hi' ? '(वैकल्पिक)' : '(Optional)')}
                 </label>
                 <input
                   type="password"
-                  placeholder={editingUser ? 'Leave blank to keep unchanged' : '••••••••'}
+                  placeholder={editingUser ? (language === 'hi' ? 'बदलाव न करने के लिए खाली छोड़ें' : 'Leave blank to keep unchanged') : '••••••••'}
                   value={newUserForm.password}
                   onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
                   className="w-full px-4 py-3 rounded-2xl text-xs font-semibold glass-input text-dairy-text"
@@ -337,7 +364,7 @@ export const Settings: React.FC = () => {
                   }}
                   className="flex-1 py-3.5 bg-gray-400 hover:bg-gray-500 text-white font-bold rounded-2xl text-xs shadow-md active:scale-95 transition-all flex items-center justify-center"
                 >
-                  Cancel (रद्द करें)
+                  {t('cancel')}
                 </button>
               )}
               <button
@@ -345,7 +372,7 @@ export const Settings: React.FC = () => {
                 disabled={addingUser}
                 className="flex-1 py-3.5 bg-dairy-green text-white font-bold rounded-2xl text-xs shadow-md active:scale-95 transition-all flex items-center justify-center"
               >
-                <span>{editingUser ? 'Update Credentials (अपडेट करें)' : t('saveUser')}</span>
+                <span>{editingUser ? (language === 'hi' ? 'क्रेडेंशियल्स अपडेट करें' : 'Update Credentials') : t('saveUser')}</span>
               </button>
             </div>
           </form>
@@ -354,9 +381,13 @@ export const Settings: React.FC = () => {
         {/* PWA App Installation Section */}
         {showPWASection && (
           <div className="glass-card rounded-4xl p-6 md:col-span-2">
-            <h3 className="font-space font-bold text-lg text-dairy-text mb-2">📱 PWA Application Access</h3>
+            <h3 className="font-space font-bold text-lg text-dairy-text mb-2">
+              {language === 'hi' ? '📱 PWA ऐप इंस्टॉल करें' : '📱 PWA Application Access'}
+            </h3>
             <p className="text-xs text-dairy-text/60 mb-5">
-              Install Milk Mania directly on your home screen for quick offline access and real-time alerts.
+              {language === 'hi' 
+                ? 'त्वरित ऑफलाइन एक्सेस और अलर्ट के लिए मिल्क मेनिया को सीधे अपनी होम स्क्रीन पर इंस्टॉल करें।' 
+                : 'Install Milk Mania directly on your home screen for quick offline access and real-time alerts.'}
             </p>
             
             <button
@@ -365,15 +396,34 @@ export const Settings: React.FC = () => {
                 if (isInstallable && handleInstallPrompt) {
                   await handleInstallPrompt();
                 } else {
-                  alert("To install on your mobile device:\n\n• Apple iOS (iPhone/iPad): Tap the Share button (⎙) in Safari and select 'Add to Home Screen'.\n• Google Android / Chrome: Tap the three dots (menu) and select 'Install app' or 'Add to Home screen'.");
+                  alert(language === 'hi'
+                    ? "अपने मोबाइल डिवाइस पर इंस्टॉल करने के लिए:\n\n• Apple iOS (iPhone/iPad): Safari में शेयर बटन (⎙) दबाएं और 'Add to Home Screen' चुनें।\n• Google Android / Chrome: तीन बिंदु (मेनू) दबाएं और 'Install app' या 'Add to Home screen' चुनें।"
+                    : "To install on your mobile device:\n\n• Apple iOS (iPhone/iPad): Tap the Share button (⎙) in Safari and select 'Add to Home Screen'.\n• Google Android / Chrome: Tap the three dots (menu) and select 'Install app' or 'Add to Home screen'.");
                 }
               }}
               className="w-full py-4 text-white font-extrabold rounded-2xl text-xs shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 bg-dairy-sky hover:bg-dairy-sky/90"
             >
               <span>
-                📥 Install Milk Mania App (ऐप इंस्टॉल करें)
+                {language === 'hi' ? '📥 मिल्क मेनिया ऐप इंस्टॉल करें' : '📥 Install Milk Mania App'}
               </span>
             </button>
+
+            {/* Instant Hide / Already Installed toggle */}
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-sky-100">
+              <span className="text-[11px] text-gray-500">
+                {language === 'hi' ? 'पहले से इंस्टॉल कर लिया है?' : 'Already installed?'}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.setItem('milkmania_pwa_installed', 'true');
+                  window.dispatchEvent(new Event('appinstalled'));
+                }}
+                className="text-xs font-bold text-sky-600 hover:underline"
+              >
+                {language === 'hi' ? 'हाँ, यह विकल्प छुपाएं' : 'Hide this section'}
+              </button>
+            </div>
           </div>
         )}
       </div>

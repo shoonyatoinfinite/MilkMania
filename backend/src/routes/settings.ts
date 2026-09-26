@@ -66,6 +66,7 @@ router.get('/backup', async (req: any, res: Response) => {
     const expList = await db.expenses.findMany();
     const invList = await db.inventory.findMany();
     const setList = await db.settings.findMany();
+    const boughtList = await db.milkBought.findMany();
 
     const backupData = {
       backupDate: new Date().toISOString(),
@@ -78,7 +79,8 @@ router.get('/backup', async (req: any, res: Response) => {
       payments: payList,
       expenses: expList,
       inventory: invList,
-      settings: setList
+      settings: setList,
+      milkBought: boughtList
     };
 
     res.setHeader('Content-disposition', `attachment; filename=milkmania_backup_${Date.now()}.json`);
@@ -175,6 +177,12 @@ router.post('/restore', async (req: any, res: Response) => {
         for (const s of backupData.settings) {
           const exists = await db.settings.findUnique({ where: { key: s.key } });
           if (!exists) await db.settings.create({ data: s });
+        }
+      }
+      // Milk Bought
+      if (backupData.milkBought) {
+        for (const b of backupData.milkBought) {
+          await db.milkBought.create({ data: b });
         }
       }
     }

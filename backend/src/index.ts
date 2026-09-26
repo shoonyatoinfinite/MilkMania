@@ -20,6 +20,8 @@ import inventoryRouter from './routes/inventory';
 import settingsRouter from './routes/settings';
 import dashboardRouter from './routes/dashboard';
 import adjustmentsRouter from './routes/adjustments';
+import milkBoughtRouter from './routes/milkBought';
+import customerPortalRouter from './routes/customerPortal';
 
 import { seedDatabase } from './db/seeder';
 
@@ -98,6 +100,8 @@ app.use('/api/inventory', inventoryRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/adjustments', adjustmentsRouter);
+app.use('/api/milk-bought', milkBoughtRouter);
+app.use('/api/customer-portal', customerPortalRouter);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

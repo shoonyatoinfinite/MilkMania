@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { useTranslation } from '../utils/translations';
 import { motion } from 'framer-motion';
 
 export const Login: React.FC = () => {
-  const { login, forgotPassword, token, errorMsg, setErrorMsg, language, setLanguage, theme, toggleTheme } = useApp();
+  const { login, forgotPassword, token, errorMsg, setErrorMsg, language, setLanguage } = useApp();
   const { t } = useTranslation(language);
   const navigate = useNavigate();
 
@@ -91,16 +91,8 @@ export const Login: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       >
-        {/* Language and Theme selectors in top-right */}
+        {/* Language selector in top-right */}
         <div className="absolute top-6 right-6 flex items-center gap-2 z-20">
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="p-1 rounded-lg bg-white/50 border border-white/85 hover:bg-white shadow-sm text-xs font-bold flex items-center justify-center w-7 h-7"
-            title="Switch Theme"
-          >
-            {theme === 'morning' ? '☀️' : theme === 'evening' ? '🌙' : '🌑'}
-          </button>
           <div className="flex gap-1">
             {(['en', 'hi'] as const).map((lang) => (
               <button
@@ -125,7 +117,7 @@ export const Login: React.FC = () => {
         </div>
 
         {/* Brand Header */}
-        <div className="flex flex-col items-center text-center gap-2 mb-8 mt-4">
+        <div className="flex flex-col items-center text-center gap-2 mb-6 mt-4">
           <span className="text-4xl animate-bounce">🥛</span>
           <h2 className="font-space font-extrabold text-2xl text-dairy-text">
             {isForgotPassword ? t('forgotPasswordTitle') : t('loginTitle')}
@@ -134,6 +126,24 @@ export const Login: React.FC = () => {
             {isForgotPassword ? t('forgotPasswordDesc') : t('loginSubtitle')}
           </p>
         </div>
+
+        {/* Portal Switcher Tabs */}
+        {!isForgotPassword && (
+          <div className="flex bg-sky-50/70 p-1 rounded-2xl border border-sky-100 shadow-xs mb-6">
+            <button
+              type="button"
+              className="flex-1 py-2 rounded-xl text-xs font-bold bg-white text-dairy-sky shadow-xs flex items-center justify-center gap-1.5 transition-all"
+            >
+              <span>{language === 'hi' ? 'डेयरी संचालक' : 'Admin / Staff'}</span>
+            </button>
+            <Link
+              to="/customer-login"
+              className="flex-1 py-2 rounded-xl text-xs font-bold text-dairy-text/60 hover:text-dairy-text flex items-center justify-center gap-1.5 transition-all"
+            >
+              <span>{language === 'hi' ? 'ग्राहक लॉगिन' : 'Customer Portal'}</span>
+            </Link>
+          </div>
+        )}
 
         {/* Error messaging */}
         {errorMsg && (
