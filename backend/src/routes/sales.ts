@@ -7,6 +7,14 @@ const router = Router();
 
 router.use(authenticateJWT);
 
+const getLocalDateStr = (dVal: string | Date = new Date()) => {
+  const d = new Date(dVal);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // GET /api/sales
 router.get('/', async (req: any, res: Response) => {
   const { customerId, startDate, endDate } = req.query;
@@ -52,34 +60,14 @@ router.post('/', async (req: any, res: Response) => {
       return res.status(404).json({ message: 'Customer not found.' });
     }
 
-    // Calculate available stock for this shift and date (from milk bought and adjustments)
-    const targetDate = new Date(date);
-    const startOfDay = new Date(targetDate);
-    startOfDay.setUTCHours(0, 0, 0, 0);
-    const endOfDay = new Date(targetDate);
-    endOfDay.setUTCHours(23, 59, 59, 999);
+    const targetDayStr = getLocalDateStr(date);
+    const allSales = await db.sales.findMany();
 
-    const allSales = await db.sales.findMany({
-      where: {
-        date: {
-          gte: startOfDay,
-          lte: endOfDay
-        }
-      }
-    });
     // Check for duplicate record for same customer, date, and shift
-    const isSameDay = (d1: string | Date, d2: string | Date) => {
-      const a = new Date(d1);
-      const b = new Date(d2);
-      return a.getUTCFullYear() === b.getUTCFullYear() &&
-             a.getUTCMonth() === b.getUTCMonth() &&
-             a.getUTCDate() === b.getUTCDate();
-    };
-
     const duplicateSale = allSales.find((s: any) => 
       s.customerId === customerId && 
       s.shift === shift &&
-      isSameDay(s.date, targetDate)
+      getLocalDateStr(s.date) === targetDayStr
     );
 
     if (duplicateSale) {
@@ -88,19 +76,12 @@ router.post('/', async (req: any, res: Response) => {
       });
     }
 
-    const shiftSales = allSales.filter((s: any) => s.shift === shift);
+    const shiftSales = allSales.filter((s: any) => s.shift === shift && getLocalDateStr(s.date) === targetDayStr);
     const totalSold = shiftSales.reduce((sum: number, s: any) => sum + s.quantity, 0);
 
     // Get adjustments
-    const adjustments = await db.sessionAdjustments.findMany({
-      where: {
-        date: {
-          gte: startOfDay,
-          lte: endOfDay
-        }
-      }
-    });
-    const shiftAdjustments = adjustments.filter((a: any) => a.shift === shift);
+    const adjustments = await db.sessionAdjustments.findMany();
+    const shiftAdjustments = adjustments.filter((a: any) => a.shift === shift && getLocalDateStr(a.date) === targetDayStr);
     const rolloverTo = shiftAdjustments
       .filter((a: any) => a.actionType === 'ROLLOVER_TO')
       .reduce((sum: number, a: any) => sum + a.quantity, 0);
@@ -109,15 +90,8 @@ router.post('/', async (req: any, res: Response) => {
       .reduce((sum: number, a: any) => sum + a.quantity, 0);
 
     // Get milk bought for this date and shift
-    const milkBoughtList = await db.milkBought.findMany({
-      where: {
-        date: {
-          gte: startOfDay,
-          lte: endOfDay
-        }
-      }
-    });
-    const shiftMilkBought = milkBoughtList.filter((b: any) => b.shift === shift);
+    const milkBoughtList = await db.milkBought.findMany();
+    const shiftMilkBought = milkBoughtList.filter((b: any) => b.shift === shift && getLocalDateStr(b.date) === targetDayStr);
     const totalBought = shiftMilkBought.reduce((sum: number, b: any) => sum + b.quantity, 0);
 
     const available = (totalBought + rolloverTo - reductions) - totalSold;
@@ -175,20 +149,13 @@ router.put('/:id', async (req: any, res: Response) => {
       return res.status(400).json({ message: 'Quantity must be greater than zero.' });
     }
 
-    // Check duplicate in PUT
-    const isSameDay = (d1: string | Date, d2: string | Date) => {
-      const a = new Date(d1);
-      const b = new Date(d2);
-      return a.getUTCFullYear() === b.getUTCFullYear() &&
-             a.getUTCMonth() === b.getUTCMonth() &&
-             a.getUTCDate() === b.getUTCDate();
-    };
+    const targetDayStr = getLocalDateStr(nextDate);
 
     const duplicateSale = existing.find((s: any) => 
       s.id !== id &&
       s.customerId === nextCustomerId && 
       s.shift === nextShift &&
-      isSameDay(s.date, nextDate)
+      getLocalDateStr(s.date) === targetDayStr
     );
 
     if (duplicateSale) {
@@ -198,44 +165,18 @@ router.put('/:id', async (req: any, res: Response) => {
     }
 
     // Check stock for target date/shift (excluding this sale's original quantity)
-    const startOfDay = new Date(nextDate);
-    startOfDay.setUTCHours(0, 0, 0, 0);
-    const endOfDay = new Date(nextDate);
-    endOfDay.setUTCHours(23, 59, 59, 999);
-
-    const productions = await db.productions.findMany({
-      where: {
-        date: {
-          gte: startOfDay,
-          lte: endOfDay
-        }
-      }
-    });
-    const shiftProds = productions.filter((p: any) => p.shift === nextShift);
+    const productions = await db.productions.findMany();
+    const shiftProds = productions.filter((p: any) => p.shift === nextShift && getLocalDateStr(p.date) === targetDayStr);
     const totalRemainingYield = shiftProds.reduce((sum: number, p: any) => sum + (p.quantity - (p.homeConsumption || 0)), 0);
 
-    const allSales = await db.sales.findMany({
-      where: {
-        date: {
-          gte: startOfDay,
-          lte: endOfDay
-        }
-      }
-    });
+    const allSales = await db.sales.findMany();
     // Exclude current sale from calculations
-    const shiftSales = allSales.filter((s: any) => s.shift === nextShift && s.id !== id);
+    const shiftSales = allSales.filter((s: any) => s.shift === nextShift && s.id !== id && getLocalDateStr(s.date) === targetDayStr);
     const totalSold = shiftSales.reduce((sum: number, s: any) => sum + s.quantity, 0);
 
     // Get adjustments
-    const adjustments = await db.sessionAdjustments.findMany({
-      where: {
-        date: {
-          gte: startOfDay,
-          lte: endOfDay
-        }
-      }
-    });
-    const shiftAdjustments = adjustments.filter((a: any) => a.shift === nextShift);
+    const adjustments = await db.sessionAdjustments.findMany();
+    const shiftAdjustments = adjustments.filter((a: any) => a.shift === nextShift && getLocalDateStr(a.date) === targetDayStr);
     const rolloverTo = shiftAdjustments
       .filter((a: any) => a.actionType === 'ROLLOVER_TO')
       .reduce((sum: number, a: any) => sum + a.quantity, 0);
@@ -244,15 +185,8 @@ router.put('/:id', async (req: any, res: Response) => {
       .reduce((sum: number, a: any) => sum + a.quantity, 0);
 
     // Get milk bought for nextShift
-    const milkBoughtList = await db.milkBought.findMany({
-      where: {
-        date: {
-          gte: startOfDay,
-          lte: endOfDay
-        }
-      }
-    });
-    const shiftMilkBought = milkBoughtList.filter((b: any) => b.shift === nextShift);
+    const milkBoughtList = await db.milkBought.findMany();
+    const shiftMilkBought = milkBoughtList.filter((b: any) => b.shift === nextShift && getLocalDateStr(b.date) === targetDayStr);
     const totalBought = shiftMilkBought.reduce((sum: number, b: any) => sum + b.quantity, 0);
 
     const available = (totalRemainingYield + totalBought + rolloverTo - reductions) - totalSold;

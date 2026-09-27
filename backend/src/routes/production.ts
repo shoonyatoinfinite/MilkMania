@@ -7,6 +7,14 @@ const router = Router();
 
 router.use(authenticateJWT);
 
+const getLocalDateStr = (dVal: string | Date = new Date()) => {
+  const d = new Date(dVal);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // GET /api/production
 router.get('/', async (req: any, res: Response) => {
   const { animalId, startDate, endDate } = req.query;
@@ -62,24 +70,14 @@ router.post('/', async (req: any, res: Response) => {
       return res.status(404).json({ message: 'Animal not found.' });
     }
 
-    // Check for duplicate record for same animal, date, and shift using compatible findMany
-    const targetDate = new Date(date);
-    const startOfDay = new Date(targetDate);
-    startOfDay.setUTCHours(0, 0, 0, 0);
-    const endOfDay = new Date(targetDate);
-    endOfDay.setUTCHours(23, 59, 59, 999);
+    const targetDayStr = getLocalDateStr(date);
+    const existingList = await db.productions.findMany();
 
-    const existingList = await db.productions.findMany({
-      where: {
-        animalId,
-        date: {
-          gte: startOfDay,
-          lte: endOfDay
-        }
-      }
-    });
-
-    const existing = existingList.find((p: any) => p.shift === shift);
+    const existing = existingList.find((p: any) => 
+      p.animalId === animalId &&
+      p.shift === shift &&
+      getLocalDateStr(p.date) === targetDayStr
+    );
 
     if (existing) {
       return res.status(400).json({
@@ -138,17 +136,13 @@ router.put('/:id', async (req: any, res: Response) => {
     }
 
     if (animalId || date || shift) {
-      const startOfDay = new Date(nextDate);
-      startOfDay.setUTCHours(0, 0, 0, 0);
-      const endOfDay = new Date(nextDate);
-      endOfDay.setUTCHours(23, 59, 59, 999);
+      const targetDayStr = getLocalDateStr(nextDate);
 
       const duplicate = allRecords.find((p: any) => {
         if (p.id === id) return false;
         if (p.animalId !== nextAnimalId) return false;
         if (p.shift !== nextShift) return false;
-        const pDate = new Date(p.date).getTime();
-        return pDate >= startOfDay.getTime() && pDate <= endOfDay.getTime();
+        return getLocalDateStr(p.date) === targetDayStr;
       });
 
       if (duplicate) {

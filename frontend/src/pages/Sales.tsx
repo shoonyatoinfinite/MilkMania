@@ -79,8 +79,16 @@ export const Sales: React.FC = () => {
     return map;
   }, [sales, payments]);
 
-  const getAutoShift = (): 'MORNING' | 'EVENING' => {
-    return new Date().getHours() >= 13 ? 'EVENING' : 'MORNING';
+  const getLocalDateStr = (dVal: string | Date = new Date()) => {
+    const d = new Date(dVal);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const getAutoShift = (d: Date = new Date()): 'MORNING' | 'EVENING' => {
+    return d.getHours() >= 12 ? 'EVENING' : 'MORNING';
   };
 
   // Form state
@@ -114,16 +122,6 @@ export const Sales: React.FC = () => {
     }));
   };
 
-  const isSameDay = (d1: string | Date, d2: string | Date) => {
-    const a = new Date(d1);
-    const b = new Date(d2);
-    return (
-      a.getFullYear() === b.getFullYear() &&
-      a.getMonth() === b.getMonth() &&
-      a.getDate() === b.getDate()
-    );
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.customerId || !form.quantity) return;
@@ -132,7 +130,7 @@ export const Sales: React.FC = () => {
     const duplicate = sales.find((s: any) => 
       s.customerId === form.customerId && 
       s.shift === form.shift && 
-      isSameDay(s.date, new Date())
+      getLocalDateStr(s.date) === getLocalDateStr(new Date())
     );
 
     if (duplicate) {
@@ -227,7 +225,10 @@ export const Sales: React.FC = () => {
                   return (
                     <tr key={sale.id} className="border-b border-white/20 hover:bg-white/20 transition-all">
                       <td className="py-4 px-6">
-                        {new Date(sale.date).toLocaleDateString(language === 'en' ? 'en-US' : 'hi-IN', { day: 'numeric', month: 'short' })}
+                        <div className="font-semibold">{new Date(sale.date).toLocaleDateString(language === 'en' ? 'en-US' : 'hi-IN', { day: 'numeric', month: 'short' })}</div>
+                        <div className="text-[10px] text-dairy-text/40 font-mono">
+                          {new Date(sale.date).toLocaleTimeString(language === 'en' ? 'en-US' : 'hi-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                        </div>
                       </td>
                       <td className="py-4 px-6 font-bold">
                         {cust ? (
@@ -347,7 +348,7 @@ export const Sales: React.FC = () => {
                 </select>
               </div>
 
-              {form.customerId && sales.some((s: any) => s.customerId === form.customerId && s.shift === form.shift && isSameDay(s.date, new Date())) && (
+              {form.customerId && sales.some((s: any) => s.customerId === form.customerId && s.shift === form.shift && getLocalDateStr(s.date) === getLocalDateStr(new Date())) && (
                 <div className="p-3 bg-amber-50 border border-amber-300 rounded-2xl text-amber-800 text-xs font-bold flex items-center gap-2">
                   <span>⚠️</span>
                   <span>
@@ -589,7 +590,7 @@ export const Sales: React.FC = () => {
                           <div>
                             <p className="font-bold">
                               {new Date(sale.date).toLocaleDateString(language === 'en' ? 'en-US' : 'hi-IN', { day: 'numeric', month: 'short' })}
-                              {' '}<span className="text-[10px] text-dairy-text/40">({sale.shift === 'MORNING' ? '☀️ Morning' : '🌙 Evening'})</span>
+                              {' '}<span className="text-[10px] text-dairy-text/40">({sale.shift === 'MORNING' ? '☀️ Morning' : '🌙 Evening'} • {new Date(sale.date).toLocaleTimeString(language === 'en' ? 'en-US' : 'hi-IN', { hour: '2-digit', minute: '2-digit', hour12: true })})</span>
                             </p>
                             <p className="text-[10px] text-dairy-text/50 mt-0.5">Rate: ₹{sale.rate}/L • Qty: {sale.quantity} L</p>
                           </div>

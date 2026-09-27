@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { useTranslation } from '../utils/translations';
 import {
@@ -29,9 +29,9 @@ const getLocalDateStr = (dVal: string | Date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
-const getAutoShift = (): 'MORNING' | 'EVENING' => {
-  const currentHour = new Date().getHours();
-  return currentHour >= 13 ? 'EVENING' : 'MORNING';
+const getAutoShift = (d: Date = new Date()): 'MORNING' | 'EVENING' => {
+  const currentHour = d.getHours();
+  return currentHour >= 12 ? 'EVENING' : 'MORNING';
 };
 
 export const Dashboard: React.FC = () => {
@@ -59,7 +59,7 @@ export const Dashboard: React.FC = () => {
   // State: Direct Milk Sale Feed
   const [saleType, setSaleType] = useState<'INDIVIDUAL' | 'BULK'>('INDIVIDUAL');
   const [saleCustomerId, setSaleCustomerId] = useState('');
-  const [saleShift, setSaleShift] = useState<'MORNING' | 'EVENING'>(getAutoShift);
+  const [saleShift, setSaleShift] = useState<'MORNING' | 'EVENING'>(() => getAutoShift());
   const [saleQuantity, setSaleQuantity] = useState('');
   const [saleRate, setSaleRate] = useState('');
   const [salePaymentMethod, setSalePaymentMethod] = useState<'CASH' | 'UPI' | 'PENDING'>('PENDING');
@@ -69,7 +69,7 @@ export const Dashboard: React.FC = () => {
 
   // State: Milk Bought Form (Hidden unless enabled in settings)
   const [boughtSupplier, setBoughtSupplier] = useState('');
-  const [boughtShift, setBoughtShift] = useState<'MORNING' | 'EVENING'>(getAutoShift);
+  const [boughtShift, setBoughtShift] = useState<'MORNING' | 'EVENING'>(() => getAutoShift());
   const [boughtQuantity, setBoughtQuantity] = useState('');
   const [boughtRate, setBoughtRate] = useState('');
   const [boughtFat, setBoughtFat] = useState('');
@@ -100,6 +100,24 @@ export const Dashboard: React.FC = () => {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const activeAutoShift = getAutoShift(currentTime);
+  const activeDateToday = getLocalDateStr(currentTime);
+
+  const prevShiftRef = useRef(activeAutoShift);
+  const prevDateRef = useRef(activeDateToday);
+
+  // Auto reset active shifts and daily data when crossing 12am or 12pm
+  useEffect(() => {
+    if (prevShiftRef.current !== activeAutoShift || prevDateRef.current !== activeDateToday) {
+      prevShiftRef.current = activeAutoShift;
+      prevDateRef.current = activeDateToday;
+      setSaleShift(activeAutoShift);
+      setBoughtShift(activeAutoShift);
+      setExpDate(activeDateToday);
+      refreshAllData();
+    }
+  }, [activeAutoShift, activeDateToday, refreshAllData]);
 
   // Filter customers by selected sale type (Individual vs Bulk)
   const filteredCustomers = useMemo(() => {
@@ -214,18 +232,10 @@ export const Dashboard: React.FC = () => {
     }
 
     // Check duplicate sale for customer in this shift today
-    const isSameDay = (d1: string | Date, d2: string | Date) => {
-      const a = new Date(d1);
-      const b = new Date(d2);
-      return a.getFullYear() === b.getFullYear() &&
-             a.getMonth() === b.getMonth() &&
-             a.getDate() === b.getDate();
-    };
-
     const duplicateSale = (sales || []).find((s: any) => 
       s.customerId === saleCustomerId && 
       s.shift === saleShift && 
-      isSameDay(s.date, new Date())
+      getLocalDateStr(s.date) === getLocalDateStr(new Date())
     );
 
     if (duplicateSale) {
@@ -310,9 +320,17 @@ export const Dashboard: React.FC = () => {
       return;
     }
 
+    const now = new Date();
+    let expenseDateIso = now.toISOString();
+    if (expDate && expDate !== getLocalDateStr(now)) {
+      const selected = new Date(expDate);
+      selected.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+      expenseDateIso = selected.toISOString();
+    }
+
     setSavingExp(true);
     const success = await createExpense({
-      date: new Date(expDate).toISOString(),
+      date: expenseDateIso,
       category: expCategory,
       amount: amt,
       description: expDescription
@@ -357,7 +375,7 @@ export const Dashboard: React.FC = () => {
           {/* Active Shift & Live Clock / Date Strip */}
           <div className="flex flex-wrap items-center gap-2 mb-1.5">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-sky-100 text-sky-800 border border-sky-200/60 shadow-xs">
-              {getAutoShift() === 'MORNING' ? `☀️ ${t('morning')}` : `🌙 ${t('evening')}`} {t('activeShift')}
+              {getAutoShift(currentTime) === 'MORNING' ? `☀️ ${t('morning')}` : `🌙 ${t('evening')}`} {t('activeShift')}
             </span>
 
             {/* Real-time Live Clock */}
@@ -519,10 +537,7 @@ export const Dashboard: React.FC = () => {
 
               {/* Inline warning if record already exists for this customer in selected shift today */}
               {saleCustomerId && (sales || []).some((s: any) => {
-                const a = new Date(s.date);
-                const b = new Date();
-                const isToday = a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-                return s.customerId === saleCustomerId && s.shift === saleShift && isToday;
+                return s.customerId === saleCustomerId && s.shift === saleShift && getLocalDateStr(s.date) === getLocalDateStr(new Date());
               }) && (
                 <div className="mt-1.5 p-2 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold flex items-center gap-1.5">
                   <span className="text-amber-600">⚠️</span>
@@ -683,6 +698,11 @@ export const Dashboard: React.FC = () => {
                     </p>
                     <p className="text-[10px] text-gray-500 mt-0.5">
                       {s.shift === 'MORNING' ? '☀️' : '🌙'} {s.quantity}L @ ₹{s.rate || Math.round((s.amount / s.quantity) * 10) / 10}
+                      {s.date && (
+                        <span className="ml-1 text-gray-400 font-medium">
+                          • {new Date(s.date).toLocaleTimeString(language === 'hi' ? 'hi-IN' : 'en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                        </span>
+                      )}
                     </p>
                   </div>
                   <div className="text-right flex items-center gap-2">
@@ -923,7 +943,14 @@ export const Dashboard: React.FC = () => {
                   <div key={b.id} className="p-2.5 bg-emerald-50/50 border border-emerald-100 rounded-xl flex justify-between items-center text-xs">
                     <div>
                       <p className="font-bold text-dairy-text">{b.supplierName}</p>
-                      <p className="text-[10px] text-gray-500">{b.shift === 'MORNING' ? '☀️' : '🌙'} {b.quantity}L @ ₹{b.rate}</p>
+                      <p className="text-[10px] text-gray-500">
+                        {b.shift === 'MORNING' ? '☀️' : '🌙'} {b.quantity}L @ ₹{b.rate}
+                        {b.date && (
+                          <span className="ml-1 text-gray-400 font-medium">
+                            • {new Date(b.date).toLocaleTimeString(language === 'hi' ? 'hi-IN' : 'en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                          </span>
+                        )}
+                      </p>
                     </div>
                     <div className="text-right flex items-center gap-1.5">
                       <span className="font-extrabold text-emerald-800 font-space">₹{b.amount}</span>
