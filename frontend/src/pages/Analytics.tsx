@@ -129,9 +129,9 @@ export const Analytics: React.FC = () => {
   const PIE_COLORS = ['#0284C7', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
   return (
-    <div className="flex-1 pb-24 lg:pb-10 lg:pl-72 p-6 max-w-7xl mx-auto text-left">
+    <div className="flex-1 min-h-screen pt-20 lg:pt-8 pb-28 lg:pb-12 lg:pl-72 px-4 sm:px-6 max-w-7xl mx-auto text-left">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6">
         <h2 className="text-3xl font-space font-extrabold text-dairy-text">{t('analytics')}</h2>
         <p className="text-sm text-dairy-text/60">
           {language === 'hi' ? 'दूध बिक्री, खरीद और आय-व्यय का पूर्ण विश्लेषण' : 'Comprehensive sales, purchases, and profit analysis'}

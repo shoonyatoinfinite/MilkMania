@@ -100,9 +100,9 @@ export const Reports: React.FC = () => {
   }, [reportType, language]);
 
   return (
-    <div className="flex-1 pb-24 lg:pb-10 lg:pl-72 p-6 max-w-7xl mx-auto text-left">
+    <div className="flex-1 min-h-screen pt-20 lg:pt-8 pb-28 lg:pb-12 lg:pl-72 px-4 sm:px-6 max-w-7xl mx-auto text-left">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6">
         <h2 className="text-3xl font-space font-extrabold text-dairy-text">{t('farmReports')}</h2>
         <p className="text-sm text-dairy-text/60">
           {language === 'hi' ? 'बिक्री, खरीद और खर्चों की विस्तृत रिपोर्ट' : 'Comprehensive sales, procurement, and expenditure statements'}

@@ -348,7 +348,7 @@ export const Dashboard: React.FC = () => {
   const recentBoughtList = dashboardStats?.recentActivity?.milkBought || [];
 
   return (
-    <div className="flex-1 min-h-screen pt-16 lg:pt-6 pb-24 lg:pb-12 lg:pl-72 px-3 sm:px-6 max-w-6xl mx-auto text-left">
+    <div className="flex-1 min-h-screen pt-20 lg:pt-8 pb-28 lg:pb-12 lg:pl-72 px-3 sm:px-6 max-w-6xl mx-auto text-left">
 
       {/* 1. TOP HEADER & REAL-TIME CLOCK & DATE BAR */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 bg-gradient-to-r from-white via-sky-50/40 to-white/90 backdrop-blur-md p-4 sm:p-5 rounded-3xl border border-sky-100 shadow-sm">
