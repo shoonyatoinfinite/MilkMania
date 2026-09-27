@@ -64,7 +64,7 @@ router.get('/me', authenticateJWT, async (req: AuthenticatedRequest, res: Respon
   if (!req.user) {
     return res.status(401).json({ message: 'Not authenticated.' });
   }
-  
+
   try {
     const user = await db.users.findUnique({ where: { id: req.user.id } });
     if (!user) {
@@ -325,7 +325,7 @@ router.delete('/users/:id', authenticateJWT, async (req: AuthenticatedRequest, r
 
     await db.users.delete({ where: { id } });
     broadcast({ type: 'REFRESH_DATA' });
-    
+
     return res.json({ message: 'User access deleted successfully.' });
   } catch (error) {
     console.error('Delete user error:', error);

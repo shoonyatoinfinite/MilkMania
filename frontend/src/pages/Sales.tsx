@@ -114,18 +114,46 @@ export const Sales: React.FC = () => {
     }));
   };
 
+  const isSameDay = (d1: string | Date, d2: string | Date) => {
+    const a = new Date(d1);
+    const b = new Date(d2);
+    return (
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate()
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.customerId || !form.quantity) return;
 
-    await createSale({
+    // Check duplicate sale for customer in this shift today
+    const duplicate = sales.find((s: any) => 
+      s.customerId === form.customerId && 
+      s.shift === form.shift && 
+      isSameDay(s.date, new Date())
+    );
+
+    if (duplicate) {
+      alert(
+        language === 'hi'
+          ? `इस ग्राहक के लिए आज के ${form.shift === 'MORNING' ? 'सुबह' : 'शाम'} के सत्र में पहले से ही दूध बिक्री का रिकॉर्ड दर्ज है। एक सत्र में केवल एक बार ही रिकॉर्ड भरा जा सकता है।`
+          : `Milk record already filled for this customer in ${form.shift === 'MORNING' ? 'Morning' : 'Evening'} shift today. A customer cannot have more than one record in each shift.`
+      );
+      return;
+    }
+
+    const ok = await createSale({
       ...form,
       date: new Date().toISOString(),
       quantity: parseFloat(form.quantity),
       rate: parseFloat(form.rate),
       amount: parseFloat(form.quantity) * parseFloat(form.rate)
     });
-    setModalOpen(false);
+    if (ok) {
+      setModalOpen(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -318,6 +346,17 @@ export const Sales: React.FC = () => {
                   <option value="EVENING">🌙 {t('evening')}</option>
                 </select>
               </div>
+
+              {form.customerId && sales.some((s: any) => s.customerId === form.customerId && s.shift === form.shift && isSameDay(s.date, new Date())) && (
+                <div className="p-3 bg-amber-50 border border-amber-300 rounded-2xl text-amber-800 text-xs font-bold flex items-center gap-2">
+                  <span>⚠️</span>
+                  <span>
+                    {language === 'hi'
+                      ? `इस ग्राहक के लिए आज ${form.shift === 'MORNING' ? 'सुबह' : 'शाम'} का रिकॉर्ड पहले से दर्ज है।`
+                      : `A milk record is already recorded for this customer in ${form.shift === 'MORNING' ? 'Morning' : 'Evening'} shift today.`}
+                  </span>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">

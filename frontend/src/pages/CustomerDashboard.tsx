@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCustomerAuth } from '../context/CustomerAuthContext';
 import { useApp } from '../context/AppContext';
@@ -28,7 +28,8 @@ import {
   Copy,
   Check,
   Share2,
-  X
+  X,
+  Clock
 } from 'lucide-react';
 
 export const CustomerDashboard: React.FC = () => {
@@ -36,6 +37,15 @@ export const CustomerDashboard: React.FC = () => {
   const { language, setLanguage, settings } = useApp();
   const { t } = useTranslation(language);
   const navigate = useNavigate();
+
+  // Live Real-Time & Date Clock State (updates every 1 second)
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Active view tab: 'PURCHASES' | 'PAYMENTS' | 'STATEMENT'
   const [activeTab, setActiveTab] = useState<'PURCHASES' | 'PAYMENTS' | 'STATEMENT'>('PURCHASES');
@@ -189,7 +199,7 @@ export const CustomerDashboard: React.FC = () => {
     const startStr = statementData.startDate.toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-US', { day: 'numeric', month: 'short' });
     const endStr = statementData.endDate.toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' });
     const farm = settings?.farm_name || 'Milk Mania Dairy';
-    
+
     const text = `🥛 *${farm} - ${language === 'hi' ? 'दूध खरीद हिसाब पर्ची' : 'Milk Bill Statement'}*
 👤 ${language === 'hi' ? 'ग्राहक' : 'Customer'}: ${customer.name} (${customer.phone || customer.village})
 📅 ${language === 'hi' ? 'अवधि' : 'Period'}: ${startStr} - ${endStr}
@@ -201,9 +211,9 @@ export const CustomerDashboard: React.FC = () => {
 💵 *${language === 'hi' ? 'कुल दूध मूल्य' : 'Total Amount'}*: ₹${statementData.totalCost}
 💳 ${language === 'hi' ? 'जमा भुगतान' : 'Total Deposited'}: ₹${statementData.totalDeposited}
 ---------------------------------
-${isDuesPending 
-  ? `⚠️ *${language === 'hi' ? 'कुल बकाया राशि' : 'Total Dues Pending'}*: ₹${duesAmount}` 
-  : `✅ *${language === 'hi' ? 'अग्रिम जमा राशि' : 'Advance Credit'}*: ₹${duesAmount}`}
+${isDuesPending
+        ? `⚠️ *${language === 'hi' ? 'कुल बकाया राशि' : 'Total Dues Pending'}*: ₹${duesAmount}`
+        : `✅ *${language === 'hi' ? 'अग्रिम जमा राशि' : 'Advance Credit'}*: ₹${duesAmount}`}
 ---------------------------------
 ✨ ${language === 'hi' ? 'मिल्क मेनिया डेयरी पोर्टल' : 'Milk Mania Dairy Portal'}`;
 
@@ -305,18 +315,43 @@ ${isDuesPending
 
       {/* 2. MAIN CONTENT CONTAINER */}
       <main className="max-w-3xl mx-auto p-3 sm:p-6 flex flex-col gap-3.5 sm:gap-5 print:max-w-none print:p-0 print:m-0 print:block w-full max-w-full overflow-hidden">
-        
+
+        {/* Live Real-Time Clock & Date Bar (Hidden on print) */}
+        <div className="flex items-center justify-between px-3 py-1.5 rounded-2xl bg-white/70 backdrop-blur-md border border-sky-100/80 shadow-xs print:hidden text-xs">
+          <div className="flex items-center gap-1.5 text-dairy-text/70 font-bold">
+            <Calendar className="w-3.5 h-3.5 text-dairy-sky" />
+            <span>
+              {currentTime.toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-US', {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+              })}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <Clock className="w-3 h-3 text-emerald-600" />
+            <span className="font-mono tracking-tight font-extrabold">
+              {currentTime.toLocaleTimeString(language === 'hi' ? 'hi-IN' : 'en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+              })}
+            </span>
+          </div>
+        </div>
+
         {/* HERO STATUS CARD (Dues Alert or All-Clear) - Hidden on print */}
-        <div className={`p-4 sm:p-5 rounded-2xl sm:rounded-[28px] border shadow-md sm:shadow-lg relative overflow-hidden transition-all print:hidden ${
-          isDuesPending
+        <div className={`p-4 sm:p-5 rounded-2xl sm:rounded-[28px] border shadow-md sm:shadow-lg relative overflow-hidden transition-all print:hidden ${isDuesPending
             ? 'bg-gradient-to-br from-amber-500/10 via-rose-500/5 to-white border-amber-200/80 text-dairy-text'
             : 'bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-white border-emerald-200/80 text-dairy-text'
-        }`}>
+          }`}>
           <div className="flex justify-between items-start gap-2">
             <div className="flex flex-col gap-0.5 sm:gap-1 min-w-0">
-              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider w-fit ${
-                isDuesPending ? 'bg-amber-500/15 text-amber-700' : 'bg-emerald-500/15 text-emerald-700'
-              }`}>
+              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider w-fit ${isDuesPending ? 'bg-amber-500/15 text-amber-700' : 'bg-emerald-500/15 text-emerald-700'
+                }`}>
                 {isDuesPending ? (
                   <>
                     <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
@@ -334,8 +369,8 @@ ${isDuesPending
                   ₹{duesAmount}
                 </span>
                 <span className="text-[11px] sm:text-xs font-bold text-dairy-text/60">
-                  {isDuesPending 
-                    ? (language === 'hi' ? 'देना बाकी' : 'Balance to Pay') 
+                  {isDuesPending
+                    ? (language === 'hi' ? 'देना बाकी' : 'Balance to Pay')
                     : (language === 'hi' ? 'अग्रिम जमा' : 'In Advance Credit')}
                 </span>
               </div>
@@ -351,12 +386,12 @@ ${isDuesPending
 
           <p className="text-[10px] sm:text-[11px] font-medium text-dairy-text/70 mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-sky-100/60 leading-relaxed">
             {isDuesPending
-              ? (language === 'hi' 
-                  ? '💡 हिसाब चुकता करने के लिए आप सीधे डेयरी केंद्र पर नकद या UPI द्वारा जमा कर सकते हैं।' 
-                  : '💡 You can clear your pending balance at the dairy center via Cash or UPI.')
-              : (language === 'hi' 
-                  ? '✨ आपका खाता बिल्कुल चुकता है! धन्यवाद।' 
-                  : '✨ Your account is completely settled and up to date! Thank you.')}
+              ? (language === 'hi'
+                ? '💡 हिसाब चुकता करने के लिए आप सीधे डेयरी केंद्र पर नकद या UPI द्वारा जमा कर सकते हैं।'
+                : '💡 You can clear your pending balance at the dairy center via Cash or UPI.')
+              : (language === 'hi'
+                ? '✨ आपका खाता बिल्कुल चुकता है! धन्यवाद।'
+                : '✨ Your account is completely settled and up to date! Thank you.')}
           </p>
         </div>
 
@@ -433,11 +468,10 @@ ${isDuesPending
         <div className="grid grid-cols-3 bg-white/80 p-1 sm:p-1.5 rounded-2xl border border-sky-100 shadow-sm backdrop-blur-md gap-1 print:hidden w-full">
           <button
             onClick={() => setActiveTab('PURCHASES')}
-            className={`py-2 px-1 sm:px-3 rounded-xl text-[10px] sm:text-xs font-bold flex items-center justify-center gap-1 sm:gap-1.5 transition-all ${
-              activeTab === 'PURCHASES'
+            className={`py-2 px-1 sm:px-3 rounded-xl text-[10px] sm:text-xs font-bold flex items-center justify-center gap-1 sm:gap-1.5 transition-all ${activeTab === 'PURCHASES'
                 ? 'bg-dairy-sky text-white shadow-md'
                 : 'text-dairy-text/60 hover:text-dairy-text hover:bg-sky-50'
-            }`}
+              }`}
           >
             <Milk className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
             <span className="truncate">{language === 'hi' ? 'दूध खरीद' : 'Purchases'}</span>
@@ -445,11 +479,10 @@ ${isDuesPending
 
           <button
             onClick={() => setActiveTab('PAYMENTS')}
-            className={`py-2 px-1 sm:px-3 rounded-xl text-[10px] sm:text-xs font-bold flex items-center justify-center gap-1 sm:gap-1.5 transition-all ${
-              activeTab === 'PAYMENTS'
+            className={`py-2 px-1 sm:px-3 rounded-xl text-[10px] sm:text-xs font-bold flex items-center justify-center gap-1 sm:gap-1.5 transition-all ${activeTab === 'PAYMENTS'
                 ? 'bg-dairy-sky text-white shadow-md'
                 : 'text-dairy-text/60 hover:text-dairy-text hover:bg-sky-50'
-            }`}
+              }`}
           >
             <CreditCard className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
             <span className="truncate">{language === 'hi' ? 'भुगतान' : 'Payments'}</span>
@@ -457,11 +490,10 @@ ${isDuesPending
 
           <button
             onClick={() => setActiveTab('STATEMENT')}
-            className={`py-2 px-1 sm:px-3 rounded-xl text-[10px] sm:text-xs font-bold flex items-center justify-center gap-1 sm:gap-1.5 transition-all ${
-              activeTab === 'STATEMENT'
+            className={`py-2 px-1 sm:px-3 rounded-xl text-[10px] sm:text-xs font-bold flex items-center justify-center gap-1 sm:gap-1.5 transition-all ${activeTab === 'STATEMENT'
                 ? 'bg-dairy-sky text-white shadow-md'
                 : 'text-dairy-text/60 hover:text-dairy-text hover:bg-sky-50'
-            }`}
+              }`}
           >
             <Receipt className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
             <span className="truncate">{language === 'hi' ? 'हिसाब पर्ची' : 'Statement'}</span>
@@ -480,11 +512,10 @@ ${isDuesPending
                   <button
                     key={shiftKey}
                     onClick={() => setFilterShift(shiftKey)}
-                    className={`py-1.5 px-1 sm:px-3 rounded-xl text-[10px] sm:text-xs font-bold transition-all text-center truncate ${
-                      filterShift === shiftKey
+                    className={`py-1.5 px-1 sm:px-3 rounded-xl text-[10px] sm:text-xs font-bold transition-all text-center truncate ${filterShift === shiftKey
                         ? 'bg-dairy-sky text-white shadow-xs'
                         : 'bg-white/80 text-dairy-text/70 border border-sky-100 hover:bg-white'
-                    }`}
+                      }`}
                   >
                     {shiftKey === 'ALL' && (language === 'hi' ? 'सभी' : 'All')}
                     {shiftKey === 'THIS_MONTH' && (language === 'hi' ? 'इस माह' : 'This Mo')}
@@ -524,9 +555,8 @@ ${isDuesPending
                         {/* Middle: Shift, Liters & Rate */}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 sm:gap-2">
-                            <span className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] font-extrabold shrink-0 ${
-                              isMorning ? 'bg-amber-50 text-amber-700 border border-amber-200/50' : 'bg-indigo-50 text-indigo-700 border border-indigo-200/50'
-                            }`}>
+                            <span className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] font-extrabold shrink-0 ${isMorning ? 'bg-amber-50 text-amber-700 border border-amber-200/50' : 'bg-indigo-50 text-indigo-700 border border-indigo-200/50'
+                              }`}>
                               {isMorning ? <Sun className="w-2.5 h-2.5 shrink-0" /> : <Moon className="w-2.5 h-2.5 shrink-0" />}
                               <span>{isMorning ? (language === 'hi' ? 'सुबह' : 'Morning') : (language === 'hi' ? 'शाम' : 'Evening')}</span>
                             </span>
@@ -553,13 +583,12 @@ ${isDuesPending
                         <div className="text-xs sm:text-base font-space font-black text-dairy-text">
                           ₹{p.amount}
                         </div>
-                        <span className={`inline-block text-[8px] sm:text-[9px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-md mt-0.5 ${
-                          p.paymentMethod === 'PENDING'
+                        <span className={`inline-block text-[8px] sm:text-[9px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-md mt-0.5 ${p.paymentMethod === 'PENDING'
                             ? 'bg-rose-50 text-rose-600 border border-rose-200/50'
                             : 'bg-emerald-50 text-emerald-700 border border-emerald-200/50'
-                        }`}>
-                          {p.paymentMethod === 'PENDING' 
-                            ? (language === 'hi' ? 'उधार' : 'Due') 
+                          }`}>
+                          {p.paymentMethod === 'PENDING'
+                            ? (language === 'hi' ? 'उधार' : 'Due')
                             : (language === 'hi' ? 'चुकता' : 'Paid')}
                         </span>
                       </div>
@@ -662,11 +691,10 @@ ${isDuesPending
                         setCustomEndDate(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`);
                       }
                     }}
-                    className={`py-2 px-1 sm:px-3.5 rounded-xl text-[10px] sm:text-xs font-bold transition-all text-center truncate ${
-                      statementRange === range
+                    className={`py-2 px-1 sm:px-3.5 rounded-xl text-[10px] sm:text-xs font-bold transition-all text-center truncate ${statementRange === range
                         ? 'bg-dairy-sky text-white shadow-xs'
                         : 'bg-sky-50 text-dairy-sky hover:bg-sky-100'
-                    }`}
+                      }`}
                   >
                     {range === 'THIS_MONTH' && (language === 'hi' ? '📅 इस माह' : '📅 This Mo')}
                     {range === 'LAST_MONTH' && (language === 'hi' ? '⏮️ पिछला' : '⏮️ Last Mo')}
@@ -745,7 +773,7 @@ ${isDuesPending
 
             {/* Printable Statement Slip Card */}
             <div className="printable-slip bg-white p-3 sm:p-8 rounded-2xl sm:rounded-[32px] border border-sky-100 shadow-xl print:shadow-none print:border-none print:m-0 print:p-0 text-left w-full max-w-full overflow-hidden">
-              
+
               {/* Slip Header */}
               <div className="border-b-2 border-sky-600/30 pb-3 sm:pb-4 mb-3.5 sm:mb-5 flex flex-col sm:flex-row justify-between items-start gap-2.5 sm:gap-3">
                 <div>
@@ -756,8 +784,8 @@ ${isDuesPending
                     </h2>
                   </div>
                   <p className="text-[10px] sm:text-xs font-bold text-dairy-sky mt-0.5">
-                    {language === 'hi' 
-                      ? 'दूध खरीद एवं बहीखाता विवरण पत्र (बिल / रसीद)' 
+                    {language === 'hi'
+                      ? 'दूध खरीद एवं बहीखाता विवरण पत्र (बिल / रसीद)'
                       : 'Customer Milk Purchase Ledger & Billing Statement'}
                   </p>
                   {(settings?.address || settings?.contact_email) && (
@@ -769,13 +797,13 @@ ${isDuesPending
 
                 <div className="sm:text-right w-full sm:w-auto flex sm:flex-col justify-between items-baseline sm:items-end">
                   <span className="inline-block text-[9px] sm:text-[11px] font-extrabold text-dairy-sky bg-sky-50 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full border border-sky-200">
-                    {customer.customerType === 'BULK' 
-                      ? (language === 'hi' ? 'थोक ग्राहक (Bulk)' : 'Bulk Customer') 
+                    {customer.customerType === 'BULK'
+                      ? (language === 'hi' ? 'थोक ग्राहक (Bulk)' : 'Bulk Customer')
                       : (language === 'hi' ? 'व्यक्तिगत ग्राहक' : 'Individual Customer')}
                   </span>
                   <div>
                     <p className="text-[9px] sm:text-[11px] font-mono text-dairy-text/70 mt-1 font-semibold truncate max-w-[200px] sm:max-w-none">
-                      {language === 'hi' ? 'बिल क्र.' : 'Ref'}: MM-CUST-{customer.id.slice(0, 8).toUpperCase()}-{new Date().getFullYear()}{String(new Date().getMonth()+1).padStart(2, '0')}
+                      {language === 'hi' ? 'बिल क्र.' : 'Ref'}: MM-CUST-{customer.id.slice(0, 8).toUpperCase()}-{new Date().getFullYear()}{String(new Date().getMonth() + 1).padStart(2, '0')}
                     </p>
                     <p className="text-[8px] sm:text-[10px] text-dairy-text/50">
                       {language === 'hi' ? 'दिनांक' : 'Date'}: {new Date().toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -1099,12 +1127,12 @@ ${isDuesPending
                   <div className="flex justify-between items-center py-2.5 px-3 bg-white rounded-xl border border-sky-200 mt-1 shadow-xs">
                     <div>
                       <span className="text-xs font-black text-dairy-text block">
-                        {isDuesPending 
+                        {isDuesPending
                           ? (language === 'hi' ? '⚠️ कुल अंतिम बकाया राशि (Net Due to Dairy):' : '⚠️ Net Balance Due to Dairy:')
                           : (language === 'hi' ? '✅ कुल अंतिम अग्रिम राशि (Advance Credit):' : '✅ Advance Credit Balance:')}
                       </span>
                       <span className="text-[10px] text-dairy-text/50 font-medium">
-                        {isDuesPending 
+                        {isDuesPending
                           ? (language === 'hi' ? 'डेयरी केंद्र पर तुरंत जमा कराएं' : 'Please clear at dairy center')
                           : (language === 'hi' ? 'अगले दूध उठान में समायोजित होगी' : 'Will adjust in future supply')}
                       </span>
@@ -1136,8 +1164,8 @@ ${isDuesPending
               </div>
 
               <div className="text-center mt-5 sm:mt-6 pt-2.5 sm:pt-3 border-t border-gray-200 text-[9px] sm:text-[10px] text-dairy-text/50">
-                {language === 'hi' 
-                  ? 'यह एक कंप्यूटर जनरेटेड पर्ची है। किसी भी विसंगति हेतु 7 कार्यदिवस में डेयरी केंद्र से संपर्क करें।' 
+                {language === 'hi'
+                  ? 'यह एक कंप्यूटर जनरेटेड पर्ची है। किसी भी विसंगति हेतु 7 कार्यदिवस में डेयरी केंद्र से संपर्क करें।'
                   : 'This is a computer generated ledger statement. Please report any discrepancies within 7 working days.'}
               </div>
             </div>
@@ -1218,11 +1246,10 @@ ${isDuesPending
 
               {/* Pin Toast Message */}
               {pinMsg && (
-                <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
-                  pinMsg.type === 'success' 
-                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${pinMsg.type === 'success'
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                     : 'bg-rose-50 text-rose-700 border border-rose-200'
-                }`}>
+                  }`}>
                   {pinMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
                   <span>{pinMsg.text}</span>
                 </div>
@@ -1308,17 +1335,15 @@ ${isDuesPending
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setLanguage('hi')}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
-                    language === 'hi' ? 'bg-dairy-sky text-white shadow-xs' : 'bg-white text-dairy-text/70 border border-sky-100'
-                  }`}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${language === 'hi' ? 'bg-dairy-sky text-white shadow-xs' : 'bg-white text-dairy-text/70 border border-sky-100'
+                    }`}
                 >
                   हिन्दी
                 </button>
                 <button
                   onClick={() => setLanguage('en')}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
-                    language === 'en' ? 'bg-dairy-sky text-white shadow-xs' : 'bg-white text-dairy-text/70 border border-sky-100'
-                  }`}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${language === 'en' ? 'bg-dairy-sky text-white shadow-xs' : 'bg-white text-dairy-text/70 border border-sky-100'
+                    }`}
                 >
                   English
                 </button>

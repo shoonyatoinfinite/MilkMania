@@ -43,7 +43,7 @@ router.post('/login', async (req: Request, res: Response) => {
 
   try {
     const allCustomers = await db.customers.findMany();
-    
+
     // Find customer by phone (handles +91, 0, or plain 10 digits)
     const customer = allCustomers.find((c: any) => {
       const p = (c.phone || '').replace(/\D/g, '');

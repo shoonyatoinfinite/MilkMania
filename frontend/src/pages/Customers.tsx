@@ -21,7 +21,7 @@ export const Customers: React.FC = () => {
   const [ledgerCustomer, setLedgerCustomer] = useState<any>(null);
   const [ledgerData, setLedgerData] = useState<any>(null);
   const [loadingLedger, setLoadingLedger] = useState(false);
-  
+
   // Date filter for print statement
   const [printStart, setPrintStart] = useState(() => {
     const d = new Date();
@@ -83,9 +83,24 @@ export const Customers: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (form.phone && form.phone.length !== 10) {
+    const trimmedPhone = form.phone ? form.phone.trim() : '';
+    if (trimmedPhone && trimmedPhone.length !== 10) {
       alert(language === 'hi' ? 'मोबाइल नंबर बिल्कुल 10 अंकों का होना चाहिए।' : 'Mobile number must be exactly 10 digits.');
       return;
+    }
+
+    if (trimmedPhone) {
+      const duplicate = customers.find((c: any) => 
+        c.phone && c.phone.trim() === trimmedPhone && (!editingCustomer || c.id !== editingCustomer.id)
+      );
+      if (duplicate) {
+        alert(
+          language === 'hi'
+            ? `यह फोन नंबर (${trimmedPhone}) पहले से ही ग्राहक "${duplicate.name}" के पास दर्ज है। डुप्लिकेट फोन नंबर की अनुमति नहीं है।`
+            : `Phone number ${trimmedPhone} is already registered to customer "${duplicate.name}". Duplicate phone numbers are not allowed.`
+        );
+        return;
+      }
     }
 
     if (form.pin && !/^\d{6}$/.test(form.pin)) {
@@ -95,6 +110,7 @@ export const Customers: React.FC = () => {
 
     const data = {
       ...form,
+      phone: trimmedPhone,
       pricePerLiter: parseFloat(form.pricePerLiter || '0')
     };
 
@@ -110,8 +126,8 @@ export const Customers: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    const confirmMsg = language === 'hi' 
-      ? 'क्या आप इस ग्राहक को हटाना चाहते हैं? इसके सारे दूध बिक्री के रिकॉर्ड भी हट जाएंगे।' 
+    const confirmMsg = language === 'hi'
+      ? 'क्या आप इस ग्राहक को हटाना चाहते हैं? इसके सारे दूध बिक्री के रिकॉर्ड भी हट जाएंगे।'
       : 'Are you sure you want to remove this customer? This will wipe out all sales and payments records linked to them.';
     if (window.confirm(confirmMsg)) {
       await deleteCustomer(id);
@@ -156,7 +172,7 @@ export const Customers: React.FC = () => {
   // Print filtered customer ledger calculations
   const printStatement = useMemo(() => {
     if (!ledgerCustomer || !ledgerData) return { sales: [], payments: [], liters: 0, due: 0, paid: 0, balance: 0, previousBalance: 0, totalOutstanding: 0 };
-    
+
     const getLocalDateStr = (dStr: string) => {
       const d = new Date(dStr);
       const year = d.getFullYear();
@@ -195,7 +211,7 @@ export const Customers: React.FC = () => {
     const totalLiters = filteredSales.reduce((sum: number, s: any) => sum + s.quantity, 0);
     const totalDue = filteredSales.reduce((sum: number, s: any) => sum + s.amount, 0);
     const totalPaid = filteredPayments.reduce((sum: number, p: any) => sum + p.amount, 0);
-    
+
     const previousDue = priorSales.reduce((sum: number, s: any) => sum + s.amount, 0);
     const previousPaid = priorPayments.reduce((sum: number, p: any) => sum + p.amount, 0);
     const previousBalance = previousDue - previousPaid;
@@ -239,7 +255,7 @@ export const Customers: React.FC = () => {
 
   return (
     <div className="flex-1 pb-24 lg:pb-10 lg:pl-72 p-6 max-w-7xl mx-auto text-left print:p-0 print:pl-0 print:max-w-none">
-      
+
       {/* 1. VISUAL PORTAL LAYOUT (HIDDEN ON PRINT) */}
       <div className="print:hidden">
         {/* Header */}
@@ -272,9 +288,8 @@ export const Customers: React.FC = () => {
                         {c.customerType === 'BULK' ? 'Bulk Milkman' : 'Individual'}
                       </span>
                     </div>
-                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold tracking-wide uppercase ${
-                      c.status === 'ACTIVE' ? 'bg-dairy-green/10 text-dairy-green' : 'bg-dairy-coral/10 text-dairy-coral'
-                    }`}>
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold tracking-wide uppercase ${c.status === 'ACTIVE' ? 'bg-dairy-green/10 text-dairy-green' : 'bg-dairy-coral/10 text-dairy-coral'
+                      }`}>
                       {c.status}
                     </span>
                   </div>
@@ -353,7 +368,7 @@ export const Customers: React.FC = () => {
           <div className="absolute inset-0" onClick={() => setModalOpen(false)} />
 
           <div className="relative w-full max-w-md bg-milk-50 rounded-[32px] p-6 shadow-2xl border border-white/80 max-h-[90vh] overflow-y-auto text-left z-10">
-            <button 
+            <button
               onClick={() => setModalOpen(false)}
               className="absolute top-4 right-4 p-2 rounded-full bg-white border border-white/80 shadow-sm"
             >
@@ -530,7 +545,7 @@ export const Customers: React.FC = () => {
                 </div>
               ) : ledgerData ? (
                 <div className="flex flex-col gap-5 overflow-y-auto max-h-[72vh] pr-2">
-                  
+
                   {/* Ledger Summary Stats */}
                   <div className="grid grid-cols-4 gap-3 bg-white/40 border border-white/70 p-4 rounded-3xl text-center">
                     <div>
@@ -629,9 +644,8 @@ export const Customers: React.FC = () => {
                           <div key={month.monthKey} className="bg-white/40 border border-white/60 rounded-3xl p-4 text-left">
                             <div className="flex justify-between items-center border-b border-white/30 pb-2 mb-3">
                               <span className="font-space font-bold text-sm text-dairy-text">{month.monthName} {month.year}</span>
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                                month.pending > 0 ? 'bg-dairy-coral/10 text-dairy-coral' : 'bg-dairy-green/10 text-dairy-green'
-                              }`}>
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${month.pending > 0 ? 'bg-dairy-coral/10 text-dairy-coral' : 'bg-dairy-green/10 text-dairy-green'
+                                }`}>
                                 {month.pending > 0 ? `₹${month.pending} Pending` : 'Fully Paid'}
                               </span>
                             </div>
@@ -674,12 +688,12 @@ export const Customers: React.FC = () => {
       {/* 4. PRINT-ONLY RECEIPT STATEMENT DIALOG (HIDDEN ON APP VIEW, SHOWN ONLY ON PRINT ACTION) */}
       {ledgerCustomer && (
         <div className="hidden print:block absolute inset-0 print-receipt-container text-slate-800 z-[99999] text-left text-sm font-sans leading-relaxed min-h-screen">
-          
+
           {/* Milk spill SVG curves */}
           <svg className="absolute top-0 left-0 right-0 w-full h-24 text-sky-100 fill-current opacity-70 pointer-events-none" viewBox="0 0 1440 320" preserveAspectRatio="none">
             <path d="M0,192C120,202.7,240,224,360,213.3C480,203,600,160,720,154.7C840,149,960,181,1080,186.7C1200,192,1320,171,1380,160L1420,154.7L1420,0L1380,0C1320,0,1200,0,1080,0C960,0,840,0,720,0C600,0,480,0,360,0C240,0,120,0,0,0Z"></path>
           </svg>
-          
+
           {/* Background milk spots */}
           <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 10% 20%, #0EA5E9 25%, transparent 25%), radial-gradient(circle at 80% 70%, #0EA5E9 20%, transparent 20%), radial-gradient(circle at 50% 40%, #0EA5E9 15%, transparent 15%)' }} />
 
@@ -785,7 +799,7 @@ export const Customers: React.FC = () => {
               <p>{language === 'hi' ? 'इस अवधि का कुल मूल्य:' : 'Total Milk Value:'} <span className="font-space font-bold">₹{printStatement.due}</span></p>
               <p>{language === 'hi' ? 'कुल जमा राशि:' : 'Total Deposited:'} <span className="font-space font-bold text-emerald-600">₹{printStatement.paid}</span></p>
             </div>
-            
+
             <div className="text-right flex flex-col justify-between items-end">
               {printStatement.totalOutstanding < 0 ? (
                 <div className="text-sm font-space font-extrabold text-white bg-emerald-600 px-4 py-2.5 rounded-xl inline-block shadow-sm">
@@ -801,7 +815,7 @@ export const Customers: React.FC = () => {
               </p>
             </div>
           </div>
-          
+
           <svg className="absolute bottom-0 left-0 right-0 w-full h-24 text-sky-50 fill-current opacity-60 pointer-events-none" viewBox="0 0 1440 320" preserveAspectRatio="none">
             <path d="M0,96L80,117.3C160,139,320,181,480,197.3C640,213,800,203,960,181.3C1120,160,1280,128,1360,112L1440,96L1440,320L1360,320C1280,320,1120,320,960,320C800,320,640,320,480,320C320,320,160,320,80,320L0,320Z"></path>
           </svg>

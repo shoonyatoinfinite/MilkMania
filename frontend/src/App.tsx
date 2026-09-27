@@ -45,7 +45,7 @@ export const App: React.FC = () => {
                 <ProtectedRoute>
                   <div className="min-h-screen bg-milk-50 transition-colors duration-500 overflow-x-hidden relative">
                     <Navbar />
-                    
+
                     {/* Router Subpage Container */}
                     <Routes>
                       <Route path="/" element={<Dashboard />} />
@@ -58,7 +58,7 @@ export const App: React.FC = () => {
                       <Route path="/reports" element={<Reports />} />
                       <Route path="/profile" element={<Profile />} />
                       <Route path="/settings" element={<Settings />} />
-                      
+
                       {/* Fallback to Dashboard */}
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>

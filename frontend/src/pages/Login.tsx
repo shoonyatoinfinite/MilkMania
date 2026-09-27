@@ -40,7 +40,7 @@ export const Login: React.FC = () => {
     setLoadingSubmit(true);
     const success = await login(username, password, rememberMe);
     setLoadingSubmit(false);
-    
+
     if (success) {
       navigate('/');
     }
@@ -103,11 +103,10 @@ export const Login: React.FC = () => {
                   setErrorMsg(null);
                   setSuccessMsg(null);
                 }}
-                className={`px-2 py-1 text-[10px] font-bold rounded-lg border transition-all ${
-                  language === lang
+                className={`px-2 py-1 text-[10px] font-bold rounded-lg border transition-all ${language === lang
                     ? 'bg-dairy-sky text-white border-dairy-sky'
                     : 'bg-white border-white/85 text-dairy-text/70 hover:bg-milk-50'
-                }`}
+                  }`}
               >
                 {lang === 'en' && 'EN'}
                 {lang === 'hi' && 'HI'}

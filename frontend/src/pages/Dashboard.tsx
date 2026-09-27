@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { useTranslation } from '../utils/translations';
-import { 
-  TrendingUp, 
-  ShoppingBag, 
-  Receipt, 
-  ShoppingCart, 
+import {
+  TrendingUp,
+  ShoppingBag,
+  Receipt,
+  ShoppingCart,
   Sparkles,
   Calendar,
   CheckCircle2,
@@ -35,11 +35,11 @@ const getAutoShift = (): 'MORNING' | 'EVENING' => {
 };
 
 export const Dashboard: React.FC = () => {
-  const { 
-    user, 
-    customers, 
-    settings, 
-    dashboardStats, 
+  const {
+    user,
+    customers,
+    settings,
+    dashboardStats,
     language,
     refreshAllData,
     createSale,
@@ -66,14 +66,6 @@ export const Dashboard: React.FC = () => {
   const [savingSale, setSavingSale] = useState(false);
   const [saleSuccessToast, setSaleSuccessToast] = useState(false);
 
-  // Inline Quick Customer Add State
-  const [showQuickCustomerModal, setShowQuickCustomerModal] = useState(false);
-  const [quickCustomerName, setQuickCustomerName] = useState('');
-  const [quickCustomerPhone, setQuickCustomerPhone] = useState('');
-  const [quickCustomerRate, setQuickCustomerRate] = useState('');
-  const [quickCustomerType, setQuickCustomerType] = useState<'INDIVIDUAL' | 'BULK'>('INDIVIDUAL');
-  const [savingCustomer, setSavingCustomer] = useState(false);
-
   // State: Milk Bought Form (Hidden unless enabled in settings)
   const [boughtSupplier, setBoughtSupplier] = useState('');
   const [boughtShift, setBoughtShift] = useState<'MORNING' | 'EVENING'>(getAutoShift);
@@ -98,6 +90,15 @@ export const Dashboard: React.FC = () => {
   // Bottom Analytics Filter & Refresh State
   const [analyticsFilter, setAnalyticsFilter] = useState<'TODAY' | 'THIS_WEEK' | 'THIS_MONTH' | 'ALL_TIME'>('TODAY');
   const [refreshing, setRefreshing] = useState(false);
+
+  // Live Real-Time & Date Clock State (updates every 1 second)
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Filter customers by selected sale type (Individual vs Bulk)
   const filteredCustomers = useMemo(() => {
@@ -211,6 +212,30 @@ export const Dashboard: React.FC = () => {
       return;
     }
 
+    // Check duplicate sale for customer in this shift today
+    const isSameDay = (d1: string | Date, d2: string | Date) => {
+      const a = new Date(d1);
+      const b = new Date(d2);
+      return a.getFullYear() === b.getFullYear() &&
+             a.getMonth() === b.getMonth() &&
+             a.getDate() === b.getDate();
+    };
+
+    const duplicateSale = (sales || []).find((s: any) => 
+      s.customerId === saleCustomerId && 
+      s.shift === saleShift && 
+      isSameDay(s.date, new Date())
+    );
+
+    if (duplicateSale) {
+      alert(
+        language === 'hi'
+          ? `इस ग्राहक के लिए आज के ${saleShift === 'MORNING' ? 'सुबह' : 'शाम'} के सत्र में पहले से ही दूध बिक्री का रिकॉर्ड दर्ज है। एक सत्र में केवल एक बार ही रिकॉर्ड भरा जा सकता है।`
+          : `Milk record already filled for this customer in ${saleShift === 'MORNING' ? 'Morning' : 'Evening'} shift today. Duplicate entries in the same shift are not allowed.`
+      );
+      return;
+    }
+
     setSavingSale(true);
     const success = await createSale({
       customerId: saleCustomerId,
@@ -234,29 +259,7 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  // 2. Submit Quick New Customer
-  const handleSaveQuickCustomer = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!quickCustomerName.trim()) return;
-    setSavingCustomer(true);
-    const ok = await createCustomer({
-      name: quickCustomerName.trim(),
-      phone: quickCustomerPhone.trim() || undefined,
-      pin: '123456',
-      village: 'Local',
-      pricePerLiter: parseFloat(quickCustomerRate) || (quickCustomerType === 'BULK' ? 58 : 65),
-      customerType: quickCustomerType,
-      status: 'ACTIVE'
-    });
-    setSavingCustomer(false);
-    if (ok) {
-      setShowQuickCustomerModal(false);
-      setQuickCustomerName('');
-      setQuickCustomerPhone('');
-    }
-  };
-
-  // 3. Submit Milk Bought
+  // 2. Submit Milk Bought
   const handleSaveMilkBought = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!boughtSupplier.trim()) {
@@ -346,33 +349,59 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="flex-1 min-h-screen pt-16 lg:pt-6 pb-24 lg:pb-12 lg:pl-72 px-3 sm:px-6 max-w-6xl mx-auto text-left">
-      
-      {/* 1. TOP HEADER & DATE REFRESH BAR */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 bg-white/80 backdrop-blur-md p-4 rounded-3xl border border-sky-100 shadow-sm">
+
+      {/* 1. TOP HEADER & REAL-TIME CLOCK & DATE BAR */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 bg-gradient-to-r from-white via-sky-50/40 to-white/90 backdrop-blur-md p-4 sm:p-5 rounded-3xl border border-sky-100 shadow-sm">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-sky-100 text-sky-800">
+          {/* Active Shift & Live Clock / Date Strip */}
+          <div className="flex flex-wrap items-center gap-2 mb-1.5">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-sky-100 text-sky-800 border border-sky-200/60 shadow-xs">
               {getAutoShift() === 'MORNING' ? `☀️ ${t('morning')}` : `🌙 ${t('evening')}`} {t('activeShift')}
             </span>
-            <span className="text-xs font-bold text-gray-500">
-              {new Date().toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-US', { weekday: 'short', day: 'numeric', month: 'short' })}
-            </span>
+
+            {/* Real-time Live Clock */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <Clock className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="font-mono tracking-tight font-extrabold">
+                {currentTime.toLocaleTimeString(language === 'hi' ? 'hi-IN' : 'en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  hour12: true
+                })}
+              </span>
+            </div>
+
+            {/* Real-time Full Date */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 text-gray-700 border border-gray-200 text-xs font-bold shadow-xs">
+              <Calendar className="w-3.5 h-3.5 text-sky-600" />
+              <span>
+                {currentTime.toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-US', {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric'
+                })}
+              </span>
+            </div>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-space font-extrabold text-dairy-text mt-1">
+
+          <h1 className="text-2xl sm:text-3xl font-space font-extrabold text-dairy-text mt-1 tracking-tight">
             {t('welcome')}, {user?.name?.split(' ')[0] || 'Farmer'}! 👋
           </h1>
-          <p className="text-xs text-dairy-text/60">
+          <p className="text-xs text-dairy-text/60 font-medium">
             {t('dashboardSubtitle')}
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-center">
+        <div className="flex items-center gap-2 self-end md:self-center">
           <button
             onClick={handleRefresh}
-            className="flex items-center gap-1.5 px-3 py-2 bg-sky-50 hover:bg-sky-100 rounded-2xl border border-sky-200 text-sky-800 text-xs font-bold shadow-sm active:scale-95 transition-all"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white hover:bg-sky-50 rounded-2xl border border-sky-200 text-sky-800 text-xs font-bold shadow-sm active:scale-95 transition-all"
             title="Refresh Data"
           >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-sky-600' : 'text-sky-600'}`} />
             <span>{language === 'hi' ? 'रीफ्रेश' : 'Refresh'}</span>
           </button>
         </div>
@@ -404,11 +433,10 @@ export const Dashboard: React.FC = () => {
                 setSaleType('INDIVIDUAL');
                 setSaleCustomerId('');
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                saleType === 'INDIVIDUAL'
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${saleType === 'INDIVIDUAL'
                   ? 'bg-dairy-sky text-white shadow-sm'
                   : 'text-sky-900 hover:text-sky-600'
-              }`}
+                }`}
             >
               👥 {t('individualTag')}
             </button>
@@ -418,11 +446,10 @@ export const Dashboard: React.FC = () => {
                 setSaleType('BULK');
                 setSaleCustomerId('');
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                saleType === 'BULK'
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${saleType === 'BULK'
                   ? 'bg-dairy-sky text-white shadow-sm'
                   : 'text-sky-900 hover:text-sky-600'
-              }`}
+                }`}
             >
               🚚 {t('bulkTag')}
             </button>
@@ -438,7 +465,7 @@ export const Dashboard: React.FC = () => {
 
         <form onSubmit={handleSaveSale} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4">
-            
+
             {/* Shift Picker */}
             <div className="sm:col-span-1 lg:col-span-3">
               <label className="block text-xs font-bold text-dairy-text/75 mb-1">
@@ -448,45 +475,32 @@ export const Dashboard: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setSaleShift('MORNING')}
-                  className={`py-2.5 rounded-xl text-xs font-bold border transition-all ${
-                    saleShift === 'MORNING'
+                  className={`py-2.5 rounded-xl text-xs font-bold border transition-all ${saleShift === 'MORNING'
                       ? 'bg-sky-500 text-white border-sky-500 shadow-sm'
                       : 'bg-white text-gray-700 border-gray-200 hover:bg-sky-50'
-                  }`}
+                    }`}
                 >
                   ☀️ {t('morning')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setSaleShift('EVENING')}
-                  className={`py-2.5 rounded-xl text-xs font-bold border transition-all ${
-                    saleShift === 'EVENING'
+                  className={`py-2.5 rounded-xl text-xs font-bold border transition-all ${saleShift === 'EVENING'
                       ? 'bg-sky-500 text-white border-sky-500 shadow-sm'
                       : 'bg-white text-gray-700 border-gray-200 hover:bg-sky-50'
-                  }`}
+                    }`}
                 >
                   🌙 {t('evening')}
                 </button>
               </div>
             </div>
 
-            {/* Customer Selection with Quick Add Button */}
+            {/* Customer Selection */}
             <div className="sm:col-span-1 lg:col-span-5">
               <div className="flex justify-between items-center mb-1">
                 <label className="text-xs font-bold text-dairy-text/75">
                   {t('selectCustomerOrBuyer')} ({saleType === 'INDIVIDUAL' ? t('individualTag') : t('bulkTag')})
                 </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuickCustomerType(saleType);
-                    setShowQuickCustomerModal(true);
-                  }}
-                  className="text-[11px] font-bold text-dairy-sky hover:underline flex items-center gap-0.5"
-                >
-                  <Plus className="w-3 h-3" />
-                  <span>{t('addCustomer')}</span>
-                </button>
               </div>
               <select
                 value={saleCustomerId}
@@ -501,6 +515,23 @@ export const Dashboard: React.FC = () => {
                   </option>
                 ))}
               </select>
+
+              {/* Inline warning if record already exists for this customer in selected shift today */}
+              {saleCustomerId && (sales || []).some((s: any) => {
+                const a = new Date(s.date);
+                const b = new Date();
+                const isToday = a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+                return s.customerId === saleCustomerId && s.shift === saleShift && isToday;
+              }) && (
+                <div className="mt-1.5 p-2 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold flex items-center gap-1.5">
+                  <span className="text-amber-600">⚠️</span>
+                  <span>
+                    {language === 'hi'
+                      ? `इस ग्राहक के लिए आज ${saleShift === 'MORNING' ? 'सुबह' : 'शाम'} का रिकॉर्ड पहले से भरा हुआ है!`
+                      : `Milk record already filled for this customer in ${saleShift === 'MORNING' ? 'Morning' : 'Evening'} shift today!`}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Rate Per Liter */}
@@ -573,15 +604,14 @@ export const Dashboard: React.FC = () => {
                     key={m.key}
                     type="button"
                     onClick={() => setSalePaymentMethod(m.key as any)}
-                    className={`py-2 rounded-xl text-xs font-bold border transition-all ${
-                      salePaymentMethod === m.key
+                    className={`py-2 rounded-xl text-xs font-bold border transition-all ${salePaymentMethod === m.key
                         ? m.key === 'PENDING'
                           ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
                           : m.key === 'CASH'
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                          : 'bg-sky-600 text-white border-sky-600 shadow-sm'
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                            : 'bg-sky-600 text-white border-sky-600 shadow-sm'
                         : 'bg-white text-gray-700 border-gray-200 hover:bg-sky-50'
-                    }`}
+                      }`}
                   >
                     {m.label}
                   </button>
@@ -642,8 +672,8 @@ export const Dashboard: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-48 overflow-y-auto pr-1">
               {recentSalesList.slice(0, 6).map((s: any) => (
-                <div 
-                  key={s.id} 
+                <div
+                  key={s.id}
                   className="p-2.5 bg-sky-50/50 hover:bg-sky-50 border border-sky-100 rounded-2xl flex justify-between items-center text-xs"
                 >
                   <div className="leading-tight">
@@ -651,16 +681,15 @@ export const Dashboard: React.FC = () => {
                       {s.customer?.name || 'Customer'}
                     </p>
                     <p className="text-[10px] text-gray-500 mt-0.5">
-                      {s.shift === 'MORNING' ? '☀️' : '🌙'} {s.quantity}L @ ₹{s.rate || Math.round((s.amount/s.quantity)*10)/10}
+                      {s.shift === 'MORNING' ? '☀️' : '🌙'} {s.quantity}L @ ₹{s.rate || Math.round((s.amount / s.quantity) * 10) / 10}
                     </p>
                   </div>
                   <div className="text-right flex items-center gap-2">
                     <div>
                       <p className="font-extrabold text-sky-700 font-space">₹{s.amount}</p>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md ${
-                        s.paymentMethod === 'CASH' ? 'bg-emerald-100 text-emerald-700' :
-                        s.paymentMethod === 'UPI' ? 'bg-sky-100 text-sky-700' : 'bg-amber-100 text-amber-700'
-                      }`}>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md ${s.paymentMethod === 'CASH' ? 'bg-emerald-100 text-emerald-700' :
+                          s.paymentMethod === 'UPI' ? 'bg-sky-100 text-sky-700' : 'bg-amber-100 text-amber-700'
+                        }`}>
                         {s.paymentMethod}
                       </span>
                     </div>
@@ -713,7 +742,7 @@ export const Dashboard: React.FC = () => {
 
           <form onSubmit={handleSaveMilkBought} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4">
-              
+
               {/* Supplier Name */}
               <div className="sm:col-span-1 lg:col-span-4">
                 <label className="block text-xs font-bold text-dairy-text/75 mb-1">
@@ -738,22 +767,20 @@ export const Dashboard: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setBoughtShift('MORNING')}
-                    className={`py-2 rounded-xl text-xs font-bold border transition-all ${
-                      boughtShift === 'MORNING'
+                    className={`py-2 rounded-xl text-xs font-bold border transition-all ${boughtShift === 'MORNING'
                         ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
                         : 'bg-white text-gray-700 border-gray-200 hover:bg-emerald-50'
-                    }`}
+                      }`}
                   >
                     ☀️ {t('morning')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setBoughtShift('EVENING')}
-                    className={`py-2 rounded-xl text-xs font-bold border transition-all ${
-                      boughtShift === 'EVENING'
+                    className={`py-2 rounded-xl text-xs font-bold border transition-all ${boughtShift === 'EVENING'
                         ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
                         : 'bg-white text-gray-700 border-gray-200 hover:bg-emerald-50'
-                    }`}
+                      }`}
                   >
                     🌙 {t('evening')}
                   </button>
@@ -821,13 +848,12 @@ export const Dashboard: React.FC = () => {
                       key={m}
                       type="button"
                       onClick={() => setBoughtPaymentMethod(m)}
-                      className={`py-2 rounded-xl text-xs font-bold border transition-all ${
-                        boughtPaymentMethod === m
+                      className={`py-2 rounded-xl text-xs font-bold border transition-all ${boughtPaymentMethod === m
                           ? m === 'PENDING'
                             ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
                             : 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
                           : 'bg-white text-gray-700 border-gray-200 hover:bg-emerald-50'
-                      }`}
+                        }`}
                     >
                       {m === 'PENDING' ? `⏳ ${t('pending')}` : m === 'CASH' ? `💵 ${t('cash')}` : `📱 ${t('upi')}`}
                     </button>
@@ -948,7 +974,7 @@ export const Dashboard: React.FC = () => {
 
         <form onSubmit={handleSaveAnimalExpense} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4">
-            
+
             {/* Category */}
             <div className="sm:col-span-1 lg:col-span-5">
               <label className="block text-xs font-bold text-dairy-text/75 mb-1">
@@ -1088,11 +1114,10 @@ export const Dashboard: React.FC = () => {
                 key={tab.key}
                 type="button"
                 onClick={() => handleFilterChange(tab.key as any)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  analyticsFilter === tab.key
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${analyticsFilter === tab.key
                     ? 'bg-dairy-sky text-white shadow-md'
                     : 'text-sky-900 hover:bg-sky-100'
-                }`}
+                  }`}
               >
                 {tab.label}
               </button>
@@ -1137,14 +1162,14 @@ export const Dashboard: React.FC = () => {
               </div>
               {/* Progress bar */}
               <div className="w-full bg-indigo-100 h-2 rounded-full overflow-hidden flex">
-                <div 
-                  className="bg-indigo-600 h-full" 
-                  style={{ width: `${analytics.individual?.percentage || 0}%` }} 
+                <div
+                  className="bg-indigo-600 h-full"
+                  style={{ width: `${analytics.individual?.percentage || 0}%` }}
                   title={`Individual: ${analytics.individual?.percentage}%`}
                 />
-                <div 
-                  className="bg-indigo-300 h-full" 
-                  style={{ width: `${analytics.bulk?.percentage || 0}%` }} 
+                <div
+                  className="bg-indigo-300 h-full"
+                  style={{ width: `${analytics.bulk?.percentage || 0}%` }}
                   title={`Bulk: ${analytics.bulk?.percentage}%`}
                 />
               </div>
@@ -1272,18 +1297,18 @@ export const Dashboard: React.FC = () => {
                 <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#0284c7" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#0284c7" stopOpacity={0.0}/>
+                      <stop offset="5%" stopColor="#0284c7" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#0284c7" stopOpacity={0.0} />
                     </linearGradient>
                     <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.0}/>
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0f2fe" />
                   <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{ backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #bae6fd', fontSize: '11px', boxShadow: '0 8px 24px rgba(2,132,199,0.1)' }}
                   />
                   <Area type="monotone" dataKey="sales" name={language === 'hi' ? 'दूध बिक्री (L)' : 'Sales (L)'} stroke="#0284c7" strokeWidth={2.5} fillOpacity={1} fill="url(#colorSales)" />
@@ -1294,67 +1319,6 @@ export const Dashboard: React.FC = () => {
           </div>
         )}
       </section>
-
-      {/* QUICK ADD CUSTOMER MODAL */}
-      {showQuickCustomerModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl border border-sky-100">
-            <h3 className="font-space font-bold text-base text-dairy-text mb-3">
-              {t('addCustomer')} ({quickCustomerType === 'BULK' ? t('bulkTag') : t('individualTag')})
-            </h3>
-            <form onSubmit={handleSaveQuickCustomer} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-gray-600 mb-1">{t('customer')} *</label>
-                <input
-                  type="text"
-                  value={quickCustomerName}
-                  onChange={(e) => setQuickCustomerName(e.target.value)}
-                  placeholder="e.g. Ramesh Kumar"
-                  className="w-full px-3 py-2 rounded-xl text-xs border border-sky-200"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-600 mb-1">Phone</label>
-                <input
-                  type="text"
-                  value={quickCustomerPhone}
-                  onChange={(e) => setQuickCustomerPhone(e.target.value)}
-                  placeholder="9876543210"
-                  className="w-full px-3 py-2 rounded-xl text-xs border border-sky-200"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-600 mb-1">{t('rate')} (₹/L)</label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={quickCustomerRate}
-                  onChange={(e) => setQuickCustomerRate(e.target.value)}
-                  placeholder={quickCustomerType === 'BULK' ? '58' : '65'}
-                  className="w-full px-3 py-2 rounded-xl text-xs border border-sky-200"
-                />
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowQuickCustomerModal(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-600"
-                >
-                  {t('cancel')}
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingCustomer}
-                  className="flex-1 py-2.5 rounded-xl bg-dairy-sky text-white text-xs font-bold"
-                >
-                  {savingCustomer ? 'Saving...' : t('saveChanges')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
     </div>
   );

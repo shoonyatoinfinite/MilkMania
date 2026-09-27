@@ -34,7 +34,7 @@ interface AppContextType {
   deferredPrompt: any;
   isStandalone: boolean;
   handleInstallPrompt: () => Promise<void>;
-  
+
   // Data State
   customers: any[];
   sales: any[];
@@ -45,7 +45,7 @@ interface AppContextType {
   dashboardStats: any;
   milkBought: any[];
   enableMilkBought: boolean;
-  
+
   // Operations
   refreshAllData: (startDate?: string, endDate?: string) => Promise<void>;
   createCustomer: (data: any) => Promise<boolean>;
@@ -168,8 +168,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   useEffect(() => {
-    const isPwaInstalled = 
-      window.matchMedia('(display-mode: standalone)').matches || 
+    const isPwaInstalled =
+      window.matchMedia('(display-mode: standalone)').matches ||
       (navigator as any).standalone === true ||
       localStorage.getItem('milkmania_pwa_installed') === 'true';
 
@@ -676,7 +676,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         logout,
         setLanguage,
         updateProfile,
-        
+
         customers,
         sales,
         payments,
@@ -686,7 +686,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         dashboardStats,
         milkBought,
         enableMilkBought,
-        
+
         refreshAllData,
         createCustomer,
         updateCustomer,

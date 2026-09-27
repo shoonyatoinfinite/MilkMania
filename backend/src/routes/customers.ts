@@ -168,6 +168,23 @@ router.post('/', async (req: any, res: Response) => {
     return res.status(400).json({ message: 'Name, village, and price per liter are required.' });
   }
 
+  const trimmedPhone = phone ? phone.toString().trim() : '';
+
+  // Check for duplicate phone number
+  if (trimmedPhone) {
+    try {
+      const allCustomers = await db.customers.findMany();
+      const duplicate = allCustomers.find((c: any) => c.phone && c.phone.toString().trim() === trimmedPhone);
+      if (duplicate) {
+        return res.status(400).json({
+          message: `A customer with phone number ${trimmedPhone} already exists (${duplicate.name}). Duplicate phone numbers are not allowed.`
+        });
+      }
+    } catch (err) {
+      console.error('Error checking duplicate customer phone:', err);
+    }
+  }
+
   // 6 digit pin validation or default
   const sanitizedPin = pin && /^\d{6}$/.test(pin.toString().trim()) ? pin.toString().trim() : '123456';
 
@@ -175,7 +192,7 @@ router.post('/', async (req: any, res: Response) => {
     const newCustomer = await db.customers.create({
       data: {
         name,
-        phone: phone || '',
+        phone: trimmedPhone,
         pin: sanitizedPin,
         village,
         address: address || '',
@@ -202,7 +219,19 @@ router.put('/:id', async (req: any, res: Response) => {
   try {
     const updateData: any = {};
     if (name) updateData.name = name;
-    if (phone !== undefined) updateData.phone = phone;
+    if (phone !== undefined) {
+      const trimmedPhone = phone ? phone.toString().trim() : '';
+      if (trimmedPhone) {
+        const allCustomers = await db.customers.findMany();
+        const duplicate = allCustomers.find((c: any) => c.id !== id && c.phone && c.phone.toString().trim() === trimmedPhone);
+        if (duplicate) {
+          return res.status(400).json({
+            message: `Another customer (${duplicate.name}) is already registered with phone number ${trimmedPhone}. Duplicate phone numbers are not allowed.`
+          });
+        }
+      }
+      updateData.phone = trimmedPhone;
+    }
     if (pin !== undefined) {
       if (pin && !/^\d{6}$/.test(pin.toString().trim())) {
         return res.status(400).json({ message: 'PIN must be exactly 6 digits.' });

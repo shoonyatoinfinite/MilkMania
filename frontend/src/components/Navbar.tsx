@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { useTranslation, translations } from '../utils/translations';
-import { 
-  LayoutDashboard, 
-  ShoppingBag, 
-  Receipt, 
-  Settings, 
-  Sparkles, 
-  TrendingUp, 
+import {
+  LayoutDashboard,
+  ShoppingBag,
+  Receipt,
+  Settings,
+  Sparkles,
+  TrendingUp,
   ShoppingCart,
   Users,
   LogOut,
@@ -25,11 +25,11 @@ interface NavItem {
 }
 
 export const Navbar: React.FC = () => {
-  const { 
-    user, 
-    logout, 
-    language, 
-    setLanguage, 
+  const {
+    user,
+    logout,
+    language,
+    setLanguage,
     enableMilkBought,
     isInstallable,
     isStandalone,
@@ -108,7 +108,7 @@ export const Navbar: React.FC = () => {
               <span className="text-[10px] tracking-widest text-dairy-sky font-bold uppercase">{t('welcome')}</span>
             </div>
           </div>
-          
+
           <button
             onClick={toggleLanguage}
             className="px-2 py-1 bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 rounded-xl text-xs font-bold transition-all"
@@ -126,11 +126,10 @@ export const Navbar: React.FC = () => {
               <NavLink
                 key={nav.path}
                 to={nav.path}
-                className={({ isActive }) => 
-                  `flex items-center gap-3 px-4 py-2.5 rounded-2xl text-xs font-semibold tracking-wide transition-all duration-200 ${
-                    isActive 
-                      ? 'bg-dairy-sky text-white shadow-md shadow-sky-500/20' 
-                      : 'text-dairy-text/75 hover:bg-sky-50 hover:text-dairy-sky'
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-4 py-2.5 rounded-2xl text-xs font-semibold tracking-wide transition-all duration-200 ${isActive
+                    ? 'bg-dairy-sky text-white shadow-md shadow-sky-500/20'
+                    : 'text-dairy-text/75 hover:bg-sky-50 hover:text-dairy-sky'
                   }`
                 }
               >
@@ -173,11 +172,10 @@ export const Navbar: React.FC = () => {
             <NavLink
               key={nav.path}
               to={nav.path}
-              className={({ isActive }) => 
-                `flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all ${
-                  isActive 
-                    ? 'text-dairy-sky font-extrabold scale-105' 
-                    : 'text-dairy-text/60 hover:text-dairy-text'
+              className={({ isActive }) =>
+                `flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all ${isActive
+                  ? 'text-dairy-sky font-extrabold scale-105'
+                  : 'text-dairy-text/60 hover:text-dairy-text'
                 }`
               }
             >
@@ -212,7 +210,7 @@ export const Navbar: React.FC = () => {
                   <p className="text-[10px] text-dairy-text/50 font-bold uppercase tracking-wider">{t('moreMenu')}</p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setMoreOpen(false)}
                 className="p-2 rounded-full bg-sky-50 border border-sky-100"
               >

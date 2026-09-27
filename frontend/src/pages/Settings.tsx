@@ -38,7 +38,7 @@ export const Settings: React.FC = () => {
 
   const [success, setSuccess] = useState(false);
 
-  // Portal Users forms
+  // Staff / Portal Users form state
   const [newUserForm, setNewUserForm] = useState({ username: '', name: '', password: '' });
   const [addingUser, setAddingUser] = useState(false);
   const [userSuccess, setUserSuccess] = useState(false);
@@ -72,11 +72,11 @@ export const Settings: React.FC = () => {
     setUserSuccess(false);
 
     if (!editingUser && newUserForm.password.length < 6) {
-      setUserError('Password must be at least 6 characters.');
+      setUserError(language === 'hi' ? 'पासवर्ड कम से कम 6 अक्षरों का होना चाहिए।' : 'Password must be at least 6 characters.');
       return;
     }
     if (editingUser && newUserForm.password && newUserForm.password.length < 6) {
-      setUserError('Password must be at least 6 characters.');
+      setUserError(language === 'hi' ? 'पासवर्ड कम से कम 6 अक्षरों का होना चाहिए।' : 'Password must be at least 6 characters.');
       return;
     }
 
@@ -103,7 +103,9 @@ export const Settings: React.FC = () => {
       setEditingUser(null);
       setTimeout(() => setUserSuccess(false), 3000);
     } else {
-      setUserError(editingUser ? 'Username already taken or error updating user.' : 'Username already taken or error creating user.');
+      setUserError(editingUser 
+        ? (language === 'hi' ? 'यूज़रनेम पहले से मौजूद है या अपडेट विफल रहा।' : 'Username already taken or error updating staff.') 
+        : (language === 'hi' ? 'यूज़रनेम पहले से मौजूद है या स्टाफ बनाना विफल रहा।' : 'Username already taken or error creating staff user.'));
     }
   };
 
@@ -248,9 +250,19 @@ export const Settings: React.FC = () => {
           </div>
         </div>
 
-        {/* Portal Access Users Section (No backup/restores local options) */}
+        {/* Staff & Portal Access Users Management */}
         <div className="glass-card rounded-4xl p-6">
-          <h3 className="font-space font-bold text-lg text-dairy-text mb-4">{t('portalUsers')}</h3>
+          <div className="mb-4">
+            <h3 className="font-space font-bold text-lg text-dairy-text flex items-center gap-2">
+              <span>👥</span>
+              <span>{language === 'hi' ? 'स्टाफ और ऑपरेटर प्रबंधन' : 'Staff & Operator Management'}</span>
+            </h3>
+            <p className="text-xs text-dairy-text/60">
+              {language === 'hi' 
+                ? 'डेयरी कर्मचारियों और ऑपरेटरों के लिए लॉगिन क्रेडेंशियल्स प्रबंधित करें' 
+                : 'Manage staff and operator login credentials for system access'}
+            </p>
+          </div>
 
           {userError && (
             <div className="mb-4 p-3 rounded-xl bg-dairy-coral/10 border border-dairy-coral/20 text-xs font-bold text-dairy-coral text-center">
@@ -260,11 +272,11 @@ export const Settings: React.FC = () => {
 
           {userSuccess && (
             <div className="mb-4 p-3 rounded-xl bg-dairy-green/10 border border-dairy-green/20 text-xs font-bold text-dairy-green text-center">
-              ✅ User registered successfully!
+              ✅ {language === 'hi' ? 'स्टाफ क्रेडेंशियल्स सफलतापूर्वक सहेजे गए!' : 'Staff credentials saved successfully!'}
             </div>
           )}
 
-          {/* List of portal users */}
+          {/* List of staff / portal users */}
           <div className="flex flex-col gap-2.5 mb-6 max-h-48 overflow-y-auto pr-1">
             {portalUsers.map((u: any) => (
               <div key={u.id} className="flex justify-between items-center p-3 bg-white/40 border border-white/60 rounded-2xl text-xs">
@@ -274,7 +286,7 @@ export const Settings: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="px-2.5 py-1 bg-dairy-sky/10 text-dairy-sky rounded-lg font-bold uppercase tracking-wider text-[8px]">
-                    {u.role}
+                    {u.role || 'STAFF'}
                   </span>
                   {user?.role === 'ADMIN' && u.id !== user?.id && (
                     <div className="flex items-center gap-1">
@@ -284,20 +296,20 @@ export const Settings: React.FC = () => {
                           setEditingUser(u);
                           setNewUserForm({ username: u.username, name: u.name, password: '' });
                         }}
-                        className="p-1.5 text-dairy-sky hover:bg-dairy-sky/10 hover:text-dairy-sky rounded-xl transition-all"
-                        title="Edit credentials"
+                        className="p-1.5 text-dairy-sky hover:bg-dairy-sky/10 rounded-xl transition-all"
+                        title="Edit staff credentials"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-edit-2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
                       </button>
                       <button
                         type="button"
                         onClick={async () => {
-                          if (window.confirm(`Are you sure you want to delete user access for ${u.name}?`)) {
+                          if (window.confirm(`Are you sure you want to delete staff access for ${u.name}?`)) {
                             await deletePortalUser(u.id);
                           }
                         }}
-                        className="p-1.5 text-dairy-coral hover:bg-dairy-coral/10 hover:text-dairy-coral rounded-xl transition-all"
-                        title="Delete access"
+                        className="p-1.5 text-dairy-coral hover:bg-dairy-coral/10 rounded-xl transition-all"
+                        title="Delete staff access"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                       </button>
@@ -308,14 +320,14 @@ export const Settings: React.FC = () => {
             ))}
           </div>
 
-          {/* Form to Add User */}
+          {/* Form to Add / Edit Staff */}
           <form onSubmit={handleAddUser} className="flex flex-col gap-4 border-t border-white/20 pt-5">
             <h4 className="text-xs font-bold text-dairy-text/75 uppercase tracking-wider">
-              {editingUser ? (language === 'hi' ? 'यूज़र क्रेडेंशियल्स बदलें' : 'Edit User Credentials') : t('addUser')}
+              {editingUser ? (language === 'hi' ? 'स्टाफ क्रेडेंशियल्स बदलें' : 'Edit Staff Credentials') : (language === 'hi' ? '+ नया स्टाफ / ऑपरेटर जोड़ें' : '+ Add New Staff / Operator')}
             </h4>
             
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-dairy-text/60">{t('fullName')}</label>
+              <label className="text-xs font-bold text-dairy-text/60">{language === 'hi' ? 'स्टाफ का पूरा नाम' : 'Staff Full Name'}</label>
               <input
                 type="text"
                 placeholder="e.g. Ramesh Kumar"
@@ -372,7 +384,7 @@ export const Settings: React.FC = () => {
                 disabled={addingUser}
                 className="flex-1 py-3.5 bg-dairy-green text-white font-bold rounded-2xl text-xs shadow-md active:scale-95 transition-all flex items-center justify-center"
               >
-                <span>{editingUser ? (language === 'hi' ? 'क्रेडेंशियल्स अपडेट करें' : 'Update Credentials') : t('saveUser')}</span>
+                <span>{editingUser ? (language === 'hi' ? 'क्रेडेंशियल्स अपडेट करें' : 'Update Credentials') : (language === 'hi' ? 'स्टाफ जोड़ें' : 'Save Staff')}</span>
               </button>
             </div>
           </form>

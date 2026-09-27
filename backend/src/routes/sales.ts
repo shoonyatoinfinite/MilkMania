@@ -67,6 +67,27 @@ router.post('/', async (req: any, res: Response) => {
         }
       }
     });
+    // Check for duplicate record for same customer, date, and shift
+    const isSameDay = (d1: string | Date, d2: string | Date) => {
+      const a = new Date(d1);
+      const b = new Date(d2);
+      return a.getUTCFullYear() === b.getUTCFullYear() &&
+             a.getUTCMonth() === b.getUTCMonth() &&
+             a.getUTCDate() === b.getUTCDate();
+    };
+
+    const duplicateSale = allSales.find((s: any) => 
+      s.customerId === customerId && 
+      s.shift === shift &&
+      isSameDay(s.date, targetDate)
+    );
+
+    if (duplicateSale) {
+      return res.status(400).json({
+        message: `Milk record already exists for this customer in ${shift === 'MORNING' ? 'Morning' : 'Evening'} shift on this date. A customer cannot have more than one entry in the same shift.`
+      });
+    }
+
     const shiftSales = allSales.filter((s: any) => s.shift === shift);
     const totalSold = shiftSales.reduce((sum: number, s: any) => sum + s.quantity, 0);
 
@@ -152,6 +173,28 @@ router.put('/:id', async (req: any, res: Response) => {
 
     if (nextQty <= 0) {
       return res.status(400).json({ message: 'Quantity must be greater than zero.' });
+    }
+
+    // Check duplicate in PUT
+    const isSameDay = (d1: string | Date, d2: string | Date) => {
+      const a = new Date(d1);
+      const b = new Date(d2);
+      return a.getUTCFullYear() === b.getUTCFullYear() &&
+             a.getUTCMonth() === b.getUTCMonth() &&
+             a.getUTCDate() === b.getUTCDate();
+    };
+
+    const duplicateSale = existing.find((s: any) => 
+      s.id !== id &&
+      s.customerId === nextCustomerId && 
+      s.shift === nextShift &&
+      isSameDay(s.date, nextDate)
+    );
+
+    if (duplicateSale) {
+      return res.status(400).json({
+        message: `Another milk entry already exists for this customer in ${nextShift === 'MORNING' ? 'Morning' : 'Evening'} shift on this date.`
+      });
     }
 
     // Check stock for target date/shift (excluding this sale's original quantity)
