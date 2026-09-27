@@ -34,7 +34,8 @@ router.post('/login', async (req: Request, res: Response) => {
     return res.status(400).json({ message: 'Mobile number and 6-digit PIN are required.' });
   }
 
-  const cleanPhone = phone.toString().replace(/\D/g, '');
+  const rawPhoneOrName = phone.toString().trim();
+  const cleanPhone = rawPhoneOrName.replace(/\D/g, '');
   const cleanPin = pin.toString().trim();
 
   if (!/^\d{6}$/.test(cleanPin)) {
@@ -44,25 +45,39 @@ router.post('/login', async (req: Request, res: Response) => {
   try {
     const allCustomers = await db.customers.findMany();
 
-    // Find customer by phone (handles +91, 0, or plain 10 digits)
+    // Find customer by phone (handles +91, 0, spaces, or plain 10 digits) or name
     const customer = allCustomers.find((c: any) => {
-      const p = (c.phone || '').replace(/\D/g, '');
-      if (!p) return false;
-      return p === cleanPhone || p.endsWith(cleanPhone) || cleanPhone.endsWith(p);
+      const p = (c.phone || '').toString().replace(/\D/g, '');
+      const cName = (c.name || '').toString().trim().toLowerCase();
+
+      // If user entered name
+      if (cName && (cName === rawPhoneOrName.toLowerCase() || cName === rawPhoneOrName.toLowerCase().replace(/\s+/g, ' '))) {
+        return true;
+      }
+
+      // If matching by phone
+      if (cleanPhone && p) {
+        if (p === cleanPhone) return true;
+        if (p.endsWith(cleanPhone) || cleanPhone.endsWith(p)) return true;
+        if (p.length >= 10 && cleanPhone.length >= 10 && p.slice(-10) === cleanPhone.slice(-10)) return true;
+      }
+
+      return false;
     });
 
     if (!customer) {
-      return res.status(404).json({ message: 'No registered customer found with this mobile number.' });
+      return res.status(404).json({ message: 'No registered customer found with this mobile number or name.' });
     }
 
-    if (customer.status !== 'ACTIVE') {
+    const customerStatus = (customer.status || 'ACTIVE').toString().toUpperCase();
+    if (customerStatus !== 'ACTIVE') {
       return res.status(403).json({ message: 'Customer account is currently inactive. Please contact dairy admin.' });
     }
 
-    // Verify 6-digit PIN (default to '123456' if not yet explicitly saved)
-    const storedPin = customer.pin || '123456';
+    // Verify 6-digit PIN
+    const storedPin = (customer.pin || '123456').toString().trim();
     if (storedPin !== cleanPin) {
-      return res.status(401).json({ message: 'Incorrect 6-digit PIN. Please try again or ask admin to reset.' });
+      return res.status(401).json({ message: 'Incorrect 6-digit PIN. Please check and try again.' });
     }
 
     const token = jwt.sign(

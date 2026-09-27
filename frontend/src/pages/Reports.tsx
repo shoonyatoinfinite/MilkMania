@@ -100,7 +100,7 @@ export const Reports: React.FC = () => {
   }, [reportType, language]);
 
   return (
-    <div className="flex-1 min-h-screen pt-20 lg:pt-8 pb-28 lg:pb-12 lg:pl-72 px-4 sm:px-6 max-w-7xl mx-auto text-left">
+    <div className="flex-1 min-h-screen pt-5 lg:pt-8 pb-28 lg:pb-12 lg:pl-72 px-4 sm:px-6 max-w-7xl mx-auto text-left">
       {/* Header */}
       <div className="mb-6">
         <h2 className="text-3xl font-space font-extrabold text-dairy-text">{t('farmReports')}</h2>

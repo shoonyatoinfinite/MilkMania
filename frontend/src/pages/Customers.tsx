@@ -254,7 +254,7 @@ export const Customers: React.FC = () => {
   }, [printStatement?.sales]);
 
   return (
-    <div className="flex-1 min-h-screen pt-20 lg:pt-8 pb-28 lg:pb-12 lg:pl-72 px-4 sm:px-6 max-w-7xl mx-auto text-left print:p-0 print:pl-0 print:max-w-none">
+    <div className="flex-1 min-h-screen pt-5 lg:pt-8 pb-28 lg:pb-12 lg:pl-72 px-4 sm:px-6 max-w-7xl mx-auto text-left print:p-0 print:pl-0 print:max-w-none">
 
       {/* 1. VISUAL PORTAL LAYOUT (HIDDEN ON PRINT) */}
       <div className="print:hidden">

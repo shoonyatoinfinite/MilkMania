@@ -11,6 +11,8 @@ model User {
   id                 String   @id @default(uuid())
   username           String   @unique
   name               String
+  phone              String?
+  pin                String?  @default("123456")
   passwordHash       String
   masterPasswordHash String
   lastPasswordHash   String?

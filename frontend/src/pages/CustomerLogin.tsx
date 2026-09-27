@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCustomerAuth } from '../context/CustomerAuthContext';
 import { useApp } from '../context/AppContext';
@@ -6,7 +6,7 @@ import { useTranslation } from '../utils/translations';
 import { Smartphone, Lock, Eye, EyeOff, ShieldCheck, ArrowRight, Milk, Sparkles, Building2 } from 'lucide-react';
 
 export const CustomerLogin: React.FC = () => {
-  const { customerLogin, errorMsg, setErrorMsg } = useCustomerAuth();
+  const { customer, customerLogin, errorMsg, setErrorMsg } = useCustomerAuth();
   const { language, setLanguage } = useApp();
   const { t } = useTranslation(language);
   const navigate = useNavigate();
@@ -16,23 +16,43 @@ export const CustomerLogin: React.FC = () => {
   const [showPin, setShowPin] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Auto-redirect if customer is already logged in
+  useEffect(() => {
+    if (customer) {
+      navigate('/customer/dashboard');
+    }
+  }, [customer, navigate]);
+
+  const handlePhoneChange = (val: string) => {
+    // If digits only
+    let clean = val.replace(/\D/g, '');
+    // Auto strip country code if pasted
+    if (clean.length === 12 && clean.startsWith('91')) {
+      clean = clean.slice(2);
+    } else if (clean.length === 11 && clean.startsWith('0')) {
+      clean = clean.slice(1);
+    }
+    setPhone(clean.slice(0, 10));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
-    const cleanPhone = phone.replace(/\D/g, '');
+    const cleanPhone = phone.trim();
     if (!cleanPhone || cleanPhone.length < 10) {
       setErrorMsg(language === 'hi' ? 'कृपया मान्य 10-अंकीय मोबाइल नंबर दर्ज करें।' : 'Please enter a valid 10-digit mobile number.');
       return;
     }
 
-    if (!pin || pin.length !== 6 || !/^\d{6}$/.test(pin)) {
+    const cleanPin = pin.trim();
+    if (!cleanPin || cleanPin.length !== 6 || !/^\d{6}$/.test(cleanPin)) {
       setErrorMsg(language === 'hi' ? 'कृपया अपना 6-अंकीय सुरक्षा पिन दर्ज करें।' : 'Please enter your 6-digit security PIN.');
       return;
     }
 
     setSubmitting(true);
-    const ok = await customerLogin(cleanPhone, pin);
+    const ok = await customerLogin(cleanPhone, cleanPin);
     setSubmitting(false);
 
     if (ok) {
@@ -114,11 +134,9 @@ export const CustomerLogin: React.FC = () => {
                 <input
                   type="tel"
                   inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={10}
                   placeholder="98765 43210"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
                   className="w-full pl-20 pr-4 py-3.5 rounded-2xl text-sm font-bold glass-input text-dairy-text bg-white/70 tracking-wider placeholder:text-gray-400"
                   required
                   autoFocus

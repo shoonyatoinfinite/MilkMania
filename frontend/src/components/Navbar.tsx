@@ -15,7 +15,8 @@ import {
   Download,
   Menu,
   X,
-  Languages
+  Languages,
+  User
 } from 'lucide-react';
 
 interface NavItem {
@@ -51,6 +52,7 @@ export const Navbar: React.FC = () => {
   const moreNavs: NavItem[] = [
     { key: 'customers', path: '/customers', icon: Users },
     { key: 'analytics', path: '/analytics', icon: TrendingUp },
+    { key: 'profile', path: '/profile', icon: User },
   ];
 
   const handleLogout = () => {
@@ -64,40 +66,7 @@ export const Navbar: React.FC = () => {
 
   return (
     <>
-      {/* 1. MOBILE TOP HEADER (Sticky, crisp white with sky blue accents) */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white/95 backdrop-blur-md border-b border-sky-100 z-40 flex items-center justify-between px-4 shadow-sm print:hidden">
-        <NavLink to="/" className="flex items-center gap-2">
-          <span className="text-2xl drop-shadow-sm">🥛</span>
-          <span className="font-space font-extrabold text-base text-dairy-text tracking-tight">
-            Milk Mania
-          </span>
-        </NavLink>
-
-        <div className="flex items-center gap-2">
-          {/* Quick Language Toggle */}
-          <button
-            onClick={toggleLanguage}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 text-xs font-bold transition-all active:scale-95"
-            title="Change Language / भाषा बदलें"
-          >
-            <Languages className="w-3.5 h-3.5" />
-            <span>{language === 'en' ? 'हिन्दी' : 'EN'}</span>
-          </button>
-
-          {/* PWA Install Button on mobile if installable and not yet installed */}
-          {!isStandalone && isInstallable && typeof window !== 'undefined' && localStorage.getItem('milkmania_pwa_installed') !== 'true' && (
-            <button
-              onClick={handleInstallPrompt}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-dairy-sky text-white text-xs font-bold shadow-sm active:scale-95 transition-all"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>{t('pwaInstallApp')}</span>
-            </button>
-          )}
-        </div>
-      </header>
-
-      {/* 2. DESKTOP GLASS SIDEBAR */}
+      {/* 1. DESKTOP GLASS SIDEBAR */}
       <aside className="hidden lg:flex flex-col justify-between fixed left-5 top-5 bottom-5 w-64 bg-white/95 backdrop-blur-xl border border-sky-100 shadow-xl rounded-4xl p-5 z-50 overflow-hidden">
         {/* Header Brand */}
         <div className="flex items-center justify-between px-2 mb-6 shrink-0">
@@ -142,17 +111,24 @@ export const Navbar: React.FC = () => {
 
         {/* User Footer & Logout */}
         <div className="flex flex-col gap-3 border-t border-sky-100 pt-4 shrink-0">
-          <div className="flex items-center justify-between px-2">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center font-bold text-dairy-sky text-xs">
-                {user?.name?.charAt(0) || 'A'}
+          <NavLink
+            to="/profile"
+            className="flex items-center justify-between p-2 rounded-2xl hover:bg-sky-50/80 transition-all border border-transparent hover:border-sky-100 group"
+            title="Edit Profile & Credentials"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-sky-400 to-dairy-sky flex items-center justify-center font-bold text-white text-xs shadow-xs group-hover:scale-105 transition-transform">
+                {user?.name?.charAt(0) || 'U'}
               </div>
               <div className="leading-tight">
-                <p className="text-xs font-bold text-dairy-text max-w-[100px] truncate">{user?.name || 'User'}</p>
-                <p className="text-[10px] text-dairy-text/60 max-w-[100px] truncate">@{user?.username || 'admin'}</p>
+                <p className="text-xs font-bold text-dairy-text max-w-[110px] truncate group-hover:text-dairy-sky transition-colors">{user?.name || 'User'}</p>
+                <p className="text-[10px] text-dairy-text/60 max-w-[110px] truncate">@{user?.username || 'user'}</p>
               </div>
             </div>
-          </div>
+            <span className="text-[9px] font-bold text-dairy-sky bg-sky-100/60 px-1.5 py-0.5 rounded-md uppercase">
+              {user?.role === 'ADMIN' ? 'Admin' : 'Staff'}
+            </span>
+          </NavLink>
 
           <button
             onClick={handleLogout}

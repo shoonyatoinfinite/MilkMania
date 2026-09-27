@@ -39,7 +39,7 @@ export const Settings: React.FC = () => {
   const [success, setSuccess] = useState(false);
 
   // Staff / Portal Users form state
-  const [newUserForm, setNewUserForm] = useState({ username: '', name: '', password: '' });
+  const [newUserForm, setNewUserForm] = useState({ username: '', name: '', password: '', phone: '', pin: '123456' });
   const [addingUser, setAddingUser] = useState(false);
   const [userSuccess, setUserSuccess] = useState(false);
   const [userError, setUserError] = useState<string | null>(null);
@@ -80,37 +80,49 @@ export const Settings: React.FC = () => {
       return;
     }
 
+    const cleanPhone = newUserForm.phone ? newUserForm.phone.replace(/\D/g, '') : '';
+    if (cleanPhone && cleanPhone.length !== 10) {
+      setUserError(language === 'hi' ? 'कृपया मान्य 10-अंकीय मोबाइल नंबर दर्ज करें।' : 'Mobile number must be exactly 10 digits.');
+      return;
+    }
+
+    const cleanPin = newUserForm.pin ? newUserForm.pin.trim() : '123456';
+    if (cleanPin && !/^\d{6}$/.test(cleanPin)) {
+      setUserError(language === 'hi' ? 'सुरक्षा पिन 6 अंकों का होना चाहिए।' : 'Security PIN must be exactly 6 digits.');
+      return;
+    }
+
     setAddingUser(true);
     let ok = false;
+    const payload = {
+      username: newUserForm.username.trim(),
+      name: newUserForm.name.trim(),
+      password: newUserForm.password || undefined,
+      phone: cleanPhone || undefined,
+      pin: cleanPin
+    };
+
     if (editingUser) {
-      ok = await updatePortalUser(editingUser.id, {
-        username: newUserForm.username,
-        name: newUserForm.name,
-        password: newUserForm.password
-      });
+      ok = await updatePortalUser(editingUser.id, payload);
     } else {
-      ok = await createPortalUser({
-        username: newUserForm.username,
-        name: newUserForm.name,
-        password: newUserForm.password
-      });
+      ok = await createPortalUser(payload);
     }
     setAddingUser(false);
 
     if (ok) {
       setUserSuccess(true);
-      setNewUserForm({ username: '', name: '', password: '' });
+      setNewUserForm({ username: '', name: '', password: '', phone: '', pin: '123456' });
       setEditingUser(null);
       setTimeout(() => setUserSuccess(false), 3000);
     } else {
       setUserError(editingUser 
-        ? (language === 'hi' ? 'यूज़रनेम पहले से मौजूद है या अपडेट विफल रहा।' : 'Username already taken or error updating staff.') 
-        : (language === 'hi' ? 'यूज़रनेम पहले से मौजूद है या स्टाफ बनाना विफल रहा।' : 'Username already taken or error creating staff user.'));
+        ? (language === 'hi' ? 'यूज़रनेम/फोन पहले से मौजूद है या अपडेट विफल रहा।' : 'Username/phone already registered or error updating staff.') 
+        : (language === 'hi' ? 'यूज़रनेम/फोन पहले से मौजूद है या स्टाफ बनाना विफल रहा।' : 'Username/phone already registered or error creating staff user.'));
     }
   };
 
   return (
-    <div className="flex-1 min-h-screen pt-20 lg:pt-8 pb-28 lg:pb-12 lg:pl-72 px-4 sm:px-6 max-w-3xl mx-auto text-left">
+    <div className="flex-1 min-h-screen pt-5 lg:pt-8 pb-28 lg:pb-12 lg:pl-72 px-4 sm:px-6 max-w-3xl mx-auto text-left">
       {/* Header */}
       <div className="mb-6">
         <h2 className="text-3xl font-space font-extrabold text-dairy-text">{t('settings')}</h2>
@@ -277,12 +289,21 @@ export const Settings: React.FC = () => {
           )}
 
           {/* List of staff / portal users */}
-          <div className="flex flex-col gap-2.5 mb-6 max-h-48 overflow-y-auto pr-1">
+          <div className="flex flex-col gap-2.5 mb-6 max-h-56 overflow-y-auto pr-1">
             {portalUsers.map((u: any) => (
               <div key={u.id} className="flex justify-between items-center p-3 bg-white/40 border border-white/60 rounded-2xl text-xs">
                 <div>
-                  <p className="font-bold text-dairy-text">{u.name}</p>
-                  <p className="text-[10px] text-dairy-text/60">{u.username}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-dairy-text">{u.name}</p>
+                    {u.phone && (
+                      <span className="text-[10px] font-semibold text-dairy-sky bg-sky-50 px-1.5 py-0.5 rounded-md">
+                        📱 +91 {u.phone}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-dairy-text/60">
+                    @{u.username} • {language === 'hi' ? 'पिन:' : 'PIN:'} <span className="font-mono font-bold text-dairy-text/80">{u.pin || '123456'}</span>
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="px-2.5 py-1 bg-dairy-sky/10 text-dairy-sky rounded-lg font-bold uppercase tracking-wider text-[8px]">
@@ -294,7 +315,13 @@ export const Settings: React.FC = () => {
                         type="button"
                         onClick={() => {
                           setEditingUser(u);
-                          setNewUserForm({ username: u.username, name: u.name, password: '' });
+                          setNewUserForm({
+                            username: u.username,
+                            name: u.name,
+                            password: '',
+                            phone: u.phone || '',
+                            pin: u.pin || '123456'
+                          });
                         }}
                         className="p-1.5 text-dairy-sky hover:bg-dairy-sky/10 rounded-xl transition-all"
                         title="Edit staff credentials"
@@ -326,19 +353,19 @@ export const Settings: React.FC = () => {
               {editingUser ? (language === 'hi' ? 'स्टाफ क्रेडेंशियल्स बदलें' : 'Edit Staff Credentials') : (language === 'hi' ? '+ नया स्टाफ / ऑपरेटर जोड़ें' : '+ Add New Staff / Operator')}
             </h4>
             
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-dairy-text/60">{language === 'hi' ? 'स्टाफ का पूरा नाम' : 'Staff Full Name'}</label>
-              <input
-                type="text"
-                placeholder="e.g. Ramesh Kumar"
-                value={newUserForm.name}
-                onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
-                className="w-full px-4 py-3 rounded-2xl text-xs font-semibold glass-input text-dairy-text"
-                required
-              />
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-dairy-text/60">{language === 'hi' ? 'स्टाफ का पूरा नाम' : 'Staff Full Name'}</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Ramesh Kumar"
+                  value={newUserForm.name}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
+                  className="w-full px-4 py-3 rounded-2xl text-xs font-semibold glass-input text-dairy-text"
+                  required
+                />
+              </div>
 
-            <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-dairy-text/60">{t('username')}</label>
                 <input
@@ -350,6 +377,34 @@ export const Settings: React.FC = () => {
                   required
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-dairy-text/60">{language === 'hi' ? 'मोबाइल नंबर (लॉगिन)' : 'Mobile (Login)'}</label>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="9876543210"
+                  value={newUserForm.phone}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, phone: e.target.value.replace(/\D/g, '') })}
+                  className="w-full px-4 py-3 rounded-2xl text-xs font-semibold glass-input text-dairy-text"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-dairy-text/60">{language === 'hi' ? '6-अंकीय पिन' : '6-Digit PIN'}</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="••••••"
+                  value={newUserForm.pin}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, pin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                  className="w-full px-4 py-3 rounded-2xl text-xs font-mono font-bold tracking-widest text-center glass-input text-dairy-text"
+                />
+              </div>
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-dairy-text/60">
@@ -357,7 +412,7 @@ export const Settings: React.FC = () => {
                 </label>
                 <input
                   type="password"
-                  placeholder={editingUser ? (language === 'hi' ? 'बदलाव न करने के लिए खाली छोड़ें' : 'Leave blank to keep unchanged') : '••••••••'}
+                  placeholder={editingUser ? (language === 'hi' ? 'यथावत रखने हेतु खाली' : 'Leave blank') : '••••••••'}
                   value={newUserForm.password}
                   onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
                   className="w-full px-4 py-3 rounded-2xl text-xs font-semibold glass-input text-dairy-text"
@@ -372,7 +427,7 @@ export const Settings: React.FC = () => {
                   type="button"
                   onClick={() => {
                     setEditingUser(null);
-                    setNewUserForm({ username: '', name: '', password: '' });
+                    setNewUserForm({ username: '', name: '', password: '', phone: '', pin: '123456' });
                   }}
                   className="flex-1 py-3.5 bg-gray-400 hover:bg-gray-500 text-white font-bold rounded-2xl text-xs shadow-md active:scale-95 transition-all flex items-center justify-center"
                 >

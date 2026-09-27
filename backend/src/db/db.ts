@@ -132,20 +132,58 @@ export const db = {
 
   users: {
     findMany: async () => {
-      if (USE_MOCK_DB) return jsonUsers.getAll();
-      return prisma!.user.findMany();
+      if (USE_MOCK_DB) {
+        return jsonUsers.getAll().map((u: any) => ({
+          ...u,
+          pin: u.pin || '123456'
+        }));
+      }
+      const list = await prisma!.user.findMany();
+      return list.map((u: any) => ({
+        ...u,
+        pin: u.pin || '123456'
+      }));
     },
     findUnique: async (args: { where: { id?: string; username?: string } }) => {
-      if (USE_MOCK_DB) return jsonUsers.findUnique(args.where);
-      return prisma!.user.findUnique({ where: args.where as any });
+      if (USE_MOCK_DB) {
+        const item = jsonUsers.findUnique(args.where);
+        return item ? { ...item, pin: item.pin || '123456' } : null;
+      }
+      const item = await prisma!.user.findUnique({ where: args.where as any });
+      return item ? { ...item, pin: item.pin || '123456' } : null;
     },
-    create: async (args: { data: { username: string; name: string; passwordHash: string; masterPasswordHash: string; lastPasswordHash?: string | null; role?: string } }) => {
-      if (USE_MOCK_DB) return jsonUsers.create(args.data);
-      return prisma!.user.create({ data: args.data });
+    findFirst: async (args: { where: { id?: string; username?: string; phone?: string } }) => {
+      if (USE_MOCK_DB) {
+        const item = jsonUsers.findMany((u: any) => {
+          if (args.where.id && u.id !== args.where.id) return false;
+          if (args.where.username && u.username !== args.where.username) return false;
+          if (args.where.phone) {
+            const p = (u.phone || '').replace(/\D/g, '');
+            const targetP = args.where.phone.replace(/\D/g, '');
+            if (p !== targetP) return false;
+          }
+          return true;
+        })[0] || null;
+        return item ? { ...item, pin: item.pin || '123456' } : null;
+      }
+      const item = await prisma!.user.findFirst({ where: args.where as any });
+      return item ? { ...item, pin: item.pin || '123456' } : null;
     },
-    update: async (args: { where: { id: string }; data: { username?: string; name?: string; passwordHash?: string; masterPasswordHash?: string; lastPasswordHash?: string | null } }) => {
-      if (USE_MOCK_DB) return jsonUsers.update(args.where, args.data);
-      return prisma!.user.update({ where: args.where, data: args.data });
+    create: async (args: { data: { username: string; name: string; phone?: string; pin?: string; passwordHash: string; masterPasswordHash: string; lastPasswordHash?: string | null; role?: string } }) => {
+      const dataToSave = {
+        ...args.data,
+        pin: args.data.pin && /^\d{6}$/.test(args.data.pin.toString().trim()) ? args.data.pin.toString().trim() : '123456'
+      };
+      if (USE_MOCK_DB) return jsonUsers.create(dataToSave);
+      return prisma!.user.create({ data: dataToSave });
+    },
+    update: async (args: { where: { id: string }; data: { username?: string; name?: string; phone?: string; pin?: string; passwordHash?: string; masterPasswordHash?: string; lastPasswordHash?: string | null; role?: string } }) => {
+      const dataToSave = { ...args.data };
+      if (args.data.pin !== undefined) {
+        dataToSave.pin = args.data.pin && /^\d{6}$/.test(args.data.pin.toString().trim()) ? args.data.pin.toString().trim() : '123456';
+      }
+      if (USE_MOCK_DB) return jsonUsers.update(args.where, dataToSave);
+      return prisma!.user.update({ where: args.where, data: dataToSave });
     },
     delete: async (args: { where: { id: string } }) => {
       if (USE_MOCK_DB) return jsonUsers.delete(args.where);
@@ -244,30 +282,53 @@ export const db = {
 
   customers: {
     findMany: async () => {
-      if (USE_MOCK_DB) return jsonCustomers.getAll();
-      return prisma!.customer.findMany({ orderBy: { name: 'asc' } });
+      if (USE_MOCK_DB) {
+        return jsonCustomers.getAll().map((c: any) => ({
+          ...c,
+          pin: c.pin || '123456'
+        }));
+      }
+      const list = await prisma!.customer.findMany({ orderBy: { name: 'asc' } });
+      return list.map((c: any) => ({
+        ...c,
+        pin: c.pin || '123456'
+      }));
     },
     findUnique: async (args: { where: { id: string } }) => {
-      if (USE_MOCK_DB) return jsonCustomers.findUnique(args.where);
-      return prisma!.customer.findUnique({ where: args.where });
+      if (USE_MOCK_DB) {
+        const item = jsonCustomers.findUnique(args.where);
+        return item ? { ...item, pin: item.pin || '123456' } : null;
+      }
+      const item = await prisma!.customer.findUnique({ where: args.where });
+      return item ? { ...item, pin: item.pin || '123456' } : null;
     },
     findFirst: async (args: { where: { phone?: string; id?: string; status?: string } }) => {
       if (USE_MOCK_DB) {
-        return jsonCustomers.findMany((c: any) => {
+        const item = jsonCustomers.findMany((c: any) => {
           if (args.where.phone && c.phone !== args.where.phone) return false;
           if (args.where.status && c.status !== args.where.status) return false;
           return true;
         })[0] || null;
+        return item ? { ...item, pin: item.pin || '123456' } : null;
       }
-      return prisma!.customer.findFirst({ where: args.where as any });
+      const item = await prisma!.customer.findFirst({ where: args.where as any });
+      return item ? { ...item, pin: item.pin || '123456' } : null;
     },
     create: async (args: { data: { name: string; phone?: string; pin?: string; village: string; address?: string; pricePerLiter: number; customerType: string; status: string; notes?: string } }) => {
-      if (USE_MOCK_DB) return jsonCustomers.create(args.data);
-      return prisma!.customer.create({ data: args.data });
+      const dataToSave = {
+        ...args.data,
+        pin: args.data.pin && /^\d{6}$/.test(args.data.pin.toString().trim()) ? args.data.pin.toString().trim() : '123456'
+      };
+      if (USE_MOCK_DB) return jsonCustomers.create(dataToSave);
+      return prisma!.customer.create({ data: dataToSave });
     },
     update: async (args: { where: { id: string }; data: { name?: string; phone?: string; pin?: string; village?: string; address?: string; pricePerLiter?: number; customerType?: string; status?: string; notes?: string } }) => {
-      if (USE_MOCK_DB) return jsonCustomers.update(args.where, args.data);
-      return prisma!.customer.update({ where: args.where, data: args.data });
+      const dataToSave = { ...args.data };
+      if (args.data.pin !== undefined) {
+        dataToSave.pin = args.data.pin && /^\d{6}$/.test(args.data.pin.toString().trim()) ? args.data.pin.toString().trim() : '123456';
+      }
+      if (USE_MOCK_DB) return jsonCustomers.update(args.where, dataToSave);
+      return prisma!.customer.update({ where: args.where, data: dataToSave });
     },
     delete: async (args: { where: { id: string } }) => {
       if (USE_MOCK_DB) {

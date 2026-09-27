@@ -1,7 +1,34 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
+
+// Dedicated Axios instance for Customer Portal so it never conflicts with Admin session
+export const customerApi = axios.create({
+  baseURL: API_BASE
+});
+
+// Automatically inject customer token and cache buster
+customerApi.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('milkmania_customer_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      delete config.headers.Authorization;
+    }
+    if (config.method === 'get') {
+      config.params = {
+        ...config.params,
+        _t: Date.now()
+      };
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 export interface CustomerStats {
   totalLiters: number;
@@ -53,9 +80,9 @@ interface CustomerAuthContextType {
   loading: boolean;
   errorMsg: string | null;
   setErrorMsg: (msg: string | null) => void;
-  customerLogin: (phone: string, pin: string) => Promise<boolean>;
+  customerLogin: (phoneOrName: string, pin: string) => Promise<boolean>;
   customerLogout: () => void;
-  refreshCustomerData: () => Promise<void>;
+  refreshCustomerData: (explicitToken?: string) => Promise<void>;
   changePin: (currentPin: string, newPin: string) => Promise<{ success: boolean; message: string }>;
 }
 
@@ -69,13 +96,8 @@ export const CustomerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [loading, setLoading] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const getAuthHeader = () => {
-    const token = localStorage.getItem('milkmania_customer_token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
-
-  const refreshCustomerData = async () => {
-    const token = localStorage.getItem('milkmania_customer_token');
+  const refreshCustomerData = async (explicitToken?: string) => {
+    const token = explicitToken || localStorage.getItem('milkmania_customer_token');
     if (!token) {
       setCustomer(null);
       setStats(null);
@@ -87,12 +109,12 @@ export const CustomerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     try {
       setLoading(true);
-      const headers = getAuthHeader();
+      const headers = { Authorization: `Bearer ${token}` };
 
       const [meRes, purchasesRes, paymentsRes] = await Promise.all([
-        axios.get(`${API_BASE}/customer-portal/me`, { headers }),
-        axios.get(`${API_BASE}/customer-portal/purchases`, { headers }),
-        axios.get(`${API_BASE}/customer-portal/payments`, { headers }),
+        customerApi.get('/customer-portal/me', { headers }),
+        customerApi.get('/customer-portal/purchases', { headers }),
+        customerApi.get('/customer-portal/payments', { headers }),
       ]);
 
       setCustomer(meRes.data.customer);
@@ -106,7 +128,7 @@ export const CustomerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
         localStorage.removeItem('milkmania_customer_token');
         setCustomer(null);
       }
-      setErrorMsg(err.response?.data?.message || 'Error loading dashboard.');
+      setErrorMsg(err.response?.data?.message || 'Error loading customer dashboard.');
     } finally {
       setLoading(false);
     }
@@ -116,14 +138,18 @@ export const CustomerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
     refreshCustomerData();
   }, []);
 
-  const customerLogin = async (phone: string, pin: string): Promise<boolean> => {
+  const customerLogin = async (phoneOrName: string, pin: string): Promise<boolean> => {
     setErrorMsg(null);
     try {
-      const res = await axios.post(`${API_BASE}/customer-portal/login`, { phone, pin });
+      const res = await axios.post(`${API_BASE}/customer-portal/login`, {
+        phone: phoneOrName,
+        pin: pin.trim()
+      });
+
       if (res.data.token) {
         localStorage.setItem('milkmania_customer_token', res.data.token);
         setCustomer(res.data.customer);
-        await refreshCustomerData();
+        await refreshCustomerData(res.data.token);
         return true;
       }
       return false;
@@ -145,8 +171,7 @@ export const CustomerAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const changePin = async (currentPin: string, newPin: string): Promise<{ success: boolean; message: string }> => {
     try {
-      const headers = getAuthHeader();
-      const res = await axios.put(`${API_BASE}/customer-portal/change-pin`, { currentPin, newPin }, { headers });
+      const res = await customerApi.put('/customer-portal/change-pin', { currentPin, newPin });
       return { success: true, message: res.data.message || 'PIN updated successfully!' };
     } catch (err: any) {
       console.error('Error changing customer PIN:', err);

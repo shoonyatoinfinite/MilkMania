@@ -9,25 +9,84 @@ const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'milkmania_super_secret_liquid_fluid_key_2026';
 
 // POST /api/auth/login
+// Supports both:
+// 1. Phone + 6-digit PIN login
+// 2. Email / Username + Password login
 router.post('/login', async (req: any, res: Response) => {
-  const { username, password, rememberMe } = req.body;
-
-  if (!username || !password) {
-    return res.status(400).json({ message: 'Username and password are required.' });
-  }
+  const { username, password, phone, pin, loginType, rememberMe } = req.body;
 
   try {
-    const user = await db.users.findUnique({
-      where: { username: username.toLowerCase().trim() }
-    });
+    const allUsers = await db.users.findMany();
 
-    if (!user) {
-      return res.status(401).json({ message: 'Invalid username or password.' });
-    }
+    let user: any = null;
 
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
-    if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid username or password.' });
+    // A. Phone + 6-digit PIN Login Mode
+    if (loginType === 'PIN' || (phone && pin)) {
+      const inputPhone = (phone || username || '').toString().trim();
+      const cleanPhone = inputPhone.replace(/\D/g, '');
+      const cleanPin = (pin || password || '').toString().trim();
+
+      if (!cleanPhone || cleanPhone.length < 10) {
+        return res.status(400).json({ message: 'Valid 10-digit mobile number is required.' });
+      }
+      if (!cleanPin || !/^\d{6}$/.test(cleanPin)) {
+        return res.status(400).json({ message: 'PIN must be exactly 6 digits.' });
+      }
+
+      // Find user by phone
+      user = allUsers.find((u: any) => {
+        const p = (u.phone || '').replace(/\D/g, '');
+        if (!p) return false;
+        return p === cleanPhone || p.endsWith(cleanPhone) || cleanPhone.endsWith(p);
+      });
+
+      if (!user) {
+        return res.status(401).json({ message: 'No admin or staff account registered with this mobile number.' });
+      }
+
+      const storedPin = user.pin || '123456';
+      if (storedPin !== cleanPin) {
+        return res.status(401).json({ message: 'Incorrect 6-digit PIN. Please check and try again.' });
+      }
+    } 
+    // B. Email / Username + Password Login Mode (with smart fallback)
+    else {
+      if (!username || !password) {
+        return res.status(400).json({ message: 'Username / Mobile and Password / PIN are required.' });
+      }
+
+      const cleanInput = username.toString().toLowerCase().trim();
+      const cleanDigits = cleanInput.replace(/\D/g, '');
+
+      // Check username first, or fallback to matching phone
+      user = allUsers.find((u: any) => {
+        if (u.username.toLowerCase() === cleanInput) return true;
+        if (cleanDigits.length >= 10) {
+          const p = (u.phone || '').replace(/\D/g, '');
+          if (p && (p === cleanDigits || p.endsWith(cleanDigits) || cleanDigits.endsWith(p))) {
+            return true;
+          }
+        }
+        return false;
+      });
+
+      if (!user) {
+        return res.status(401).json({ message: 'Invalid login credentials.' });
+      }
+
+      // 1. Try password hash matching
+      let isValidPassword = false;
+      try {
+        isValidPassword = await bcrypt.compare(password, user.passwordHash);
+      } catch (e) {}
+
+      // 2. Try PIN matching fallback if password is a 6-digit PIN
+      const storedPin = user.pin || '123456';
+      const isPinMatch = password.toString().trim() === storedPin;
+
+      if (!isValidPassword && !isPinMatch) {
+        return res.status(401).json({ message: 'Invalid password or PIN.' });
+      }
     }
 
     // Determine JWT duration
@@ -50,6 +109,8 @@ router.post('/login', async (req: any, res: Response) => {
         id: user.id,
         username: user.username,
         name: user.name,
+        phone: user.phone || '',
+        pin: user.pin || '123456',
         role: user.role
       }
     });
@@ -74,6 +135,8 @@ router.get('/me', authenticateJWT, async (req: AuthenticatedRequest, res: Respon
       id: user.id,
       username: user.username,
       name: user.name,
+      phone: user.phone || '',
+      pin: user.pin || '123456',
       role: user.role
     });
   } catch (e) {
@@ -87,19 +150,62 @@ router.put('/profile', authenticateJWT, async (req: AuthenticatedRequest, res: R
     return res.status(401).json({ message: 'Not authenticated.' });
   }
 
-  const { name, password } = req.body;
-  if (!name) {
-    return res.status(400).json({ message: 'Name is required.' });
+  const { name, username, phone, pin, password, currentPassword } = req.body;
+  if (!name || !name.trim()) {
+    return res.status(400).json({ message: 'Display Name is required.' });
   }
 
   try {
-    const updateData: any = { name };
+    const user = await db.users.findUnique({ where: { id: req.user.id } });
+    if (!user) {
+      return res.status(404).json({ message: 'User record not found.' });
+    }
 
+    const updateData: any = { name: name.trim() };
+
+    // Update username if changed
+    if (username && username.trim().toLowerCase() !== user.username.toLowerCase()) {
+      const cleanUsername = username.trim().toLowerCase();
+      const existing = await db.users.findUnique({ where: { username: cleanUsername } });
+      if (existing && existing.id !== req.user.id) {
+        return res.status(400).json({ message: 'This username / email is already taken by another account.' });
+      }
+      updateData.username = cleanUsername;
+    }
+
+    // Update phone if provided
+    if (phone !== undefined) {
+      const cleanPhone = phone ? phone.toString().replace(/\D/g, '') : '';
+      if (cleanPhone && cleanPhone.length !== 10) {
+        return res.status(400).json({ message: 'Mobile number must be exactly 10 digits.' });
+      }
+      updateData.phone = cleanPhone;
+    }
+
+    // Update 6-digit PIN if provided
+    if (pin !== undefined && pin !== '') {
+      const cleanPin = pin.toString().trim();
+      if (!/^\d{6}$/.test(cleanPin)) {
+        return res.status(400).json({ message: 'PIN must be exactly 6 numeric digits.' });
+      }
+      updateData.pin = cleanPin;
+    }
+
+    // Update password if provided
     if (password && password.trim() !== '') {
       if (password.length < 6) {
-        return res.status(400).json({ message: 'Password must be at least 6 characters.' });
+        return res.status(400).json({ message: 'New password must be at least 6 characters.' });
       }
+
+      if (currentPassword && currentPassword.trim() !== '') {
+        const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+        if (!isMatch) {
+          return res.status(400).json({ message: 'Incorrect current password entered.' });
+        }
+      }
+
       const salt = await bcrypt.genSalt(10);
+      updateData.lastPasswordHash = user.passwordHash;
       updateData.passwordHash = await bcrypt.hash(password, salt);
     }
 
@@ -114,11 +220,13 @@ router.put('/profile', authenticateJWT, async (req: AuthenticatedRequest, res: R
 
     broadcast({ type: 'REFRESH_DATA' });
     return res.json({
-      message: 'Profile updated successfully!',
+      message: 'Profile and credentials updated successfully!',
       user: {
         id: updatedUser.id,
         username: updatedUser.username,
         name: updatedUser.name,
+        phone: updatedUser.phone || '',
+        pin: updatedUser.pin || '123456',
         role: updatedUser.role
       }
     });
@@ -139,6 +247,8 @@ router.get('/users', authenticateJWT, async (req: AuthenticatedRequest, res: Res
       id: u.id,
       username: u.username,
       name: u.name,
+      phone: u.phone || '',
+      pin: u.pin || '123456',
       role: u.role,
       createdAt: u.createdAt
     }));
@@ -154,13 +264,16 @@ router.post('/users', authenticateJWT, async (req: AuthenticatedRequest, res: Re
   if (!req.user) {
     return res.status(401).json({ message: 'Not authenticated.' });
   }
-  const { username, name, password } = req.body;
+  const { username, name, password, phone, pin } = req.body;
   if (!username || !name || !password) {
     return res.status(400).json({ message: 'All fields (username, name, password) are required.' });
   }
   if (password.length < 6) {
     return res.status(400).json({ message: 'Password must be at least 6 characters.' });
   }
+
+  const cleanPhone = phone ? phone.toString().replace(/\D/g, '') : '';
+  const cleanPin = pin && /^\d{6}$/.test(pin.toString().trim()) ? pin.toString().trim() : '123456';
 
   try {
     const existing = await db.users.findUnique({ where: { username: username.toLowerCase().trim() } });
@@ -175,6 +288,8 @@ router.post('/users', authenticateJWT, async (req: AuthenticatedRequest, res: Re
       data: {
         username: username.toLowerCase().trim(),
         name: name.trim(),
+        phone: cleanPhone,
+        pin: cleanPin,
         passwordHash,
         masterPasswordHash: passwordHash, // Default master password to initial password for new users
         lastPasswordHash: null,
@@ -189,6 +304,8 @@ router.post('/users', authenticateJWT, async (req: AuthenticatedRequest, res: Re
         id: newUser.id,
         username: newUser.username,
         name: newUser.name,
+        phone: newUser.phone || '',
+        pin: newUser.pin || '123456',
         role: newUser.role
       }
     });
@@ -264,7 +381,7 @@ router.put('/users/:id', authenticateJWT, async (req: AuthenticatedRequest, res:
   }
 
   const { id } = req.params;
-  const { username, name, password, role } = req.body;
+  const { username, name, phone, pin, password, role } = req.body;
 
   try {
     const userToEdit = await db.users.findUnique({ where: { id } });
@@ -283,6 +400,13 @@ router.put('/users/:id', authenticateJWT, async (req: AuthenticatedRequest, res:
     const updateData: any = {};
     if (username) updateData.username = username;
     if (name) updateData.name = name;
+    if (phone !== undefined) updateData.phone = phone ? phone.toString().replace(/\D/g, '') : '';
+    if (pin !== undefined && pin !== '') {
+      if (!/^\d{6}$/.test(pin.toString().trim())) {
+        return res.status(400).json({ message: 'PIN must be exactly 6 digits.' });
+      }
+      updateData.pin = pin.toString().trim();
+    }
     if (role) updateData.role = role;
 
     if (password && password.trim() !== '') {
@@ -334,3 +458,4 @@ router.delete('/users/:id', authenticateJWT, async (req: AuthenticatedRequest, r
 });
 
 export default router;
+

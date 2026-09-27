@@ -21,10 +21,10 @@ interface AppContextType {
   user: any;
   token: string | null;
   language: 'en' | 'hi';
-  login: (username: string, password: string, rememberMe: boolean) => Promise<boolean>;
+  login: (credentialsOrUsername: any, password?: string, rememberMe?: boolean, loginType?: 'PASSWORD' | 'PIN') => Promise<boolean>;
   logout: () => void;
   setLanguage: (lang: 'en' | 'hi') => void;
-  updateProfile: (name: string, password?: string) => Promise<boolean>;
+  updateProfile: (profileOrName: any, password?: string, username?: string, currentPassword?: string, phone?: string, pin?: string) => Promise<boolean>;
   portalUsers: any[];
   createPortalUser: (data: any) => Promise<boolean>;
   deletePortalUser: (id: string) => Promise<boolean>;
@@ -141,10 +141,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('milkmania_lang', lang);
   };
 
-  const login = async (username: string, password: string, rememberMe: boolean): Promise<boolean> => {
+  const login = async (
+    credentialsOrUsername: any,
+    password?: string,
+    rememberMe: boolean = true,
+    loginType?: 'PASSWORD' | 'PIN'
+  ): Promise<boolean> => {
     try {
       setErrorMsg(null);
-      const res = await axios.post(`${API_BASE}/auth/login`, { username, password, rememberMe });
+      let payload: any = {};
+      if (typeof credentialsOrUsername === 'object' && credentialsOrUsername !== null) {
+        payload = credentialsOrUsername;
+      } else if (loginType === 'PIN') {
+        payload = { phone: credentialsOrUsername, pin: password, loginType: 'PIN', rememberMe };
+      } else {
+        payload = { username: credentialsOrUsername, password, rememberMe, loginType: loginType || 'PASSWORD' };
+      }
+      const res = await axios.post(`${API_BASE}/auth/login`, payload);
       setToken(res.data.token);
       setUser(res.data.user);
       return true;
@@ -336,10 +349,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const updateProfile = async (name: string, password?: string): Promise<boolean> => {
+  const updateProfile = async (
+    profileOrName: any,
+    password?: string,
+    username?: string,
+    currentPassword?: string,
+    phone?: string,
+    pin?: string
+  ): Promise<boolean> => {
     try {
       setErrorMsg(null);
-      const res = await axios.put(`${API_BASE}/auth/profile`, { name, password });
+      let payload: any = {};
+      if (typeof profileOrName === 'object' && profileOrName !== null) {
+        payload = profileOrName;
+      } else {
+        payload = { name: profileOrName, password, username, currentPassword, phone, pin };
+      }
+      const res = await axios.put(`${API_BASE}/auth/profile`, payload);
       setUser(res.data.user);
       return true;
     } catch (err: any) {
